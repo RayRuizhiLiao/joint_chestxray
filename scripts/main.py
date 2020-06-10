@@ -146,7 +146,7 @@ def main():
                                           args.semisupervised_training_data, 'full')
         args.output_dir = os.path.join(args.output_dir, args.data_split_mode, args.model, 
                                        args.training_mode, args.semisupervised_training_data, 
-                                       rgs.id) 
+                                       args.id) 
 
     args.reports_dir = os.path.join(args.output_dir, 'eval_reports')
     args.tsbd_dir = os.path.join(args.output_dir, 'tsbd_dir')
