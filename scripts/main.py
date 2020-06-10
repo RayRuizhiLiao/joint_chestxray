@@ -157,10 +157,8 @@ def main():
         raise ValueError("Output directory ({}) already exists and is not empty." \
             " Use".format(args.output_dir)+" --overwrite_output_dir to overcome.")
 
-
-    # I stopped here -- 6/10 3:30pm
     '''
-    After argument checks, create the necessary directories. 
+    Create the necessary directories.
     Make sure no argument updating after this point.
     '''
     directories = [args.output_dir, args.reports_dir, args.tsbd_dir, args.checkpoints_dir]
@@ -168,62 +166,76 @@ def main():
         if not(os.path.exists(directory)):
             os.makedirs(directory)
     if not os.path.exists(args.data_split_path):
-        raise Exception('The data split path %s does not exist! Please check'%args.data_split_path)
-    
+        raise Exception('The data split path %s does not exist! Please check' \
+            % args.data_split_path)
+
+    # TODO: the name of "reports_dir" can be confusing; need to rename it
     if args.do_eval:
         args.reports_dir = os.path.join(args.reports_dir,
             'eval_report_{}'.format(len(os.listdir(args.reports_dir))))
         if not os.path.exists(args.reports_dir):
             os.makedirs(args.reports_dir)
         main_utils.to_json_file(vars(args), os.path.join(args.reports_dir, 'eval_args.json'))
-        print('Location of the reports directory %s'%args.reports_dir)
+        print('Location of the evaluation result directory: %s' % args.reports_dir)
 
-    print('Classification type: {}'.format(args.output_channel_encoding)) # whether multilabel (3 channel) or multiclass
+    '''
+    Print some important arguments
+    '''
+    print('Classification type: {}'.format(args.output_channel_encoding))
     print('Loss method in the image-text embedding space: {}'.format(args.joint_loss_method)) 
     if args.joint_loss_method == 'ranking':
-        print('Similarity function for the ranking loss in the img-txt embedding:', args.joint_loss_similarity_function)
-    print('Currently doing **{}**'.format(args.data_split_mode)) # prev args.development_or_test
+        print('Similarity function for the ranking loss in the img-txt embedding:',
+              args.joint_loss_similarity_function)
+    print('Currently doing **{}**'.format(args.data_split_mode))
     print('Training mode: {}'.format(args.training_mode))
-    print('Training is {}'.format(args.do_train))
-    print('Eval is {}'.format(args.do_eval))
+    print('Doing training: {}'.format(args.do_train))
+    print('Doing eval: {}'.format(args.do_eval))
     print('Caching the images to RAM: {}'.format(args.cache_images))
     print('Copying the images to local disk (/var/tmp/cxr_data/): {}'.format(args.copy_data_to_local))
     print('Copying the zip to local disk (/var/tmp/zip_cxr_data/): {}'.format(args.copy_zip_to_local))
     print('Using png images: {}'.format(args.use_png))
     print('Cuda is available: {}'.format(torch.cuda.is_available()))
-    print('Device is being used: ', device)
+    print('Device used: ', device)
     print('Scheduler used: ', args.scheduler)
-    print('Learning Rate: ', args.learning_rate)
-    print('Training epochs: ', args.num_train_epochs)
+    print('Initial learning Rate: ', args.learning_rate)
+    print('Number of training epochs: ', args.num_train_epochs)
     print('Sharing the image and text classifier: ', args.share_img_txt_classifier)
     print('Text data directory: ', args.text_data_dir)
     if 'semisupervised' in args.training_mode:
-        print('Semisupervised training directory: ', args.semisupervised_training_data)
-    print('Using all Sequences in BERT last layer rather than just [CLS]: ', args.bert_pool_last_hidden)
+        print('Training data for semisupervised learning: ', args.semisupervised_training_data)
+    print('Using all Sequences in BERT last layer rather than just [CLS]: ', 
+          args.bert_pool_last_hidden)
     if args.bert_pool_last_hidden:
-        print('Using img embedding for computing attention scores: ', args.bert_pool_use_img)
+        print('Using img embedding for computing attention scores: ', 
+              args.bert_pool_use_img)
+    print('Pretrained BERT model directory: {}'.format(args.bert_pretrained_dir))
+
     '''
-    Please note: for training, the pretrained model directory is args.bert_pretrained_dir
-    and for evaluation, the pretrained model directory is args.output_dir
+    Set logging and tensorboard directories
     '''
     if args.do_train:
-        args.tsbd_dir = os.path.join(args.tsbd_dir, 
+        args.tsbd_dir = os.path.join(
+            args.tsbd_dir,
             'tsbd_{}'.format(len(os.listdir(args.tsbd_dir))))
         if not os.path.exists(args.tsbd_dir):
             os.makedirs(args.tsbd_dir)
-        print('Location of the tensorboard directory %s'%args.tsbd_dir)
+        print('Location of the tensorboard directory: %s' % args.tsbd_dir)
         log_file = os.path.join(args.output_dir, 'training.log')
-        print('Pretrained model:\t {}'.format(args.bert_pretrained_dir))
     if args.do_eval:
         log_file = os.path.join(args.reports_dir, 'evaluating.log')
-    print('Logging in:\t {}'.format(log_file))
+    print('Logging in: {}'.format(log_file))
     logging.basicConfig(filename=log_file, level=logging.INFO, filemode='w', 
-        format='%(asctime)s - %(name)s %(message)s', datefmt='%m-%d %H:%M')
-    tokenizer = BertTokenizer.from_pretrained(args.bert_pretrained_dir)
-    # It is always loaded from bert_pretrained_dir
-    # tokenizer is not something that constantly needs to be saved 
-    # because only the pre-trained model determines this.
+                        format='%(asctime)s - %(name)s %(message)s', 
+                        datefmt='%m-%d %H:%M')
 
+    '''
+    Set text tokenizer 
+    '''
+    tokenizer = BertTokenizer.from_pretrained(args.bert_pretrained_dir)
+    # tokenizer is not something that constantly needs to be saved 
+    # because only the pre-trained bert model determines this.
+
+    # I stopped here -- 6/10 5pm
     '''
     Train or evaluate the model
     '''
