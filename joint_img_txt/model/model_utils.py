@@ -17,8 +17,8 @@ import shutil
 import time
 from pytorch_transformers.modeling_bert import BertPreTrainedModel
 from pytorch_transformers import BertModel
-from chestxray_joint.model.convert_examples_to_features import convert_examples_to_features_multilabel
-from chestxray_joint.model.convert_examples_to_features import convert_examples_to_features
+from joint_img_txt.model.convert_examples_to_features import convert_examples_to_features_multilabel
+from joint_img_txt.model.convert_examples_to_features import convert_examples_to_features
 
 from math import floor, ceil
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, Dataset)
