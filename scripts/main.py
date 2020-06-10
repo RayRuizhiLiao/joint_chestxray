@@ -55,11 +55,11 @@ def main():
     if args.training_mode != 'supervised' and \
             args.training_mode != 'semisupervised_phase1' and \
             args.training_mode != 'semisupervised_phase2':
-        raise Exception('You can do either supervised or semisupervised training!')
+        raise Exception('You can do either supervised or semisupervised training')
         # 'semisupervised_phase1' is essentially unsupervised learning of the joint model
         # on chest radiographs and radiology reports
         # 'semisupervised_phase2' is supervised learning with the initialization 
-        # from the training results of semisupervised_phase1. 
+        # from the training results of semisupervised_phase1 
 
     if args.semisupervised_training_data != 'allCXR' and \
             args.semisupervised_training_data != 'allCHF':
@@ -68,19 +68,47 @@ def main():
 
     if args.training_mode == 'semisupervised_phase2':
         if not os.path.isdir(args.joint_semisupervised_pretrained_checkpoint):
-            raise Exception('The joint_semisupervised_pretrained_checkpoint directory has to exist in semisupervised_phase2')
+            raise Exception('The joint_semisupervised_pretrained_checkpoint directory \
+                has to exist for the model initialization of semisupervised_phase2')
 
-    if args.output_channel_encoding != 'multilabel' and args.output_channel_encoding != 'multiclass':
-        raise Exception('You can only select multilabel or multiclass classification')
+    if args.output_channel_encoding != 'multilabel' and \
+            args.output_channel_encoding != 'multiclass':
+        raise Exception('You can select either multilabel or multiclass classification')
     
     if args.data_split_mode != 'cross_val' and args.data_split_mode != 'testing':
-        raise Exception('You can only give the options cross_val or testing for the args.data_split_mode')
-    '''
-    Setting the data split file
-    '''
+        raise Exception('You can do either cross-validation (cross_val) or testing (testing), \
+            which determine how the dataset is going to be split')
 
+    if args.joint_loss_method != 'l2' and args.joint_loss_method != 'cosine' and \
+            args.joint_loss_method != 'dot' and args.joint_loss_method != 'ranking':
+        raise Exception('You can have either l2, cosine, dot or ranking \
+            as the joint loss calculation between the img-txt embedding')
+
+    if args.joint_loss_similarity_function != 'l2' and \
+            args.joint_loss_similarity_function != 'cosine' and \
+            args.joint_loss_similarity_function != 'dot':
+        raise Exception('You can have either l2, cosine, or dot \
+            as the similarity function for the ranking loss in the img-txt embedding. \
+            You had %s' % args.joint_loss_similarity_function)
+
+    if not args.do_train and not args.do_eval:
+        raise Exception('Either do_train or do_eval flag must be set as true')
+
+    # TODO: revisit the code related to copying data in the local disk 
+    # or caching it (may want to delete it)
+    if args.copy_data_to_local and args.copy_zip_to_local:
+        raise Exception('Cannot copy all files and zip to local at the same time')
+
+    if args.cache_images and (args.copy_data_to_local or args.copy_zip_to_local):
+        raise Exception('Cannot cache images and copy images to local at the same time')
+
+    '''
+    Select the right data split file based on the argument setting
+    '''
+    # TODO: release the data split file (including our labels)
     if args.training_mode == 'supervised' or args.training_mode == 'semisupervised_phase2':
         data_split_file_postfix = ''
+        # Supervised training does not need unlabeled data 
     elif args.semisupervised_training_data == 'allCHF':
         data_split_file_postfix = '-allCHF'
     elif args.semisupervised_training_data == 'allCXR':
@@ -88,24 +116,18 @@ def main():
 
     if args.data_split_mode == 'testing' and args.do_eval:
         args.data_split_path = os.path.join(args.data_split_path, 
-            'mimic-cxr-sub-img-edema-split-manualtest.csv')
+                                            'mimic-cxr-sub-img-edema-split-manualtest.csv')
+        # When evaluating in the testing mode, you should use the expert labels 
+        # that are included in the test set 
     else:
-        args.data_split_path = os.path.join(args.data_split_path, 
+        args.data_split_path = os.path.join(
+            args.data_split_path,
             'mimic-cxr-sub-img-edema-split{}.csv'.format(data_split_file_postfix))
 
-    if args.joint_loss_method != 'l2' and args.joint_loss_method != 'cosine' \
-        and args.joint_loss_method != 'dot' and args.joint_loss_method != 'ranking':
-        raise Exception('You can either have l2, cosine, dot or ranking' \
-            'as the joint loss calculation between the img-txt embedding')
-
-    if args.joint_loss_similarity_function != 'l2' and args.joint_loss_similarity_function != 'cosine' \
-        and args.joint_loss_similarity_function != 'dot':
-        raise Exception('You can either have l2, cosine, or dot ' \
-            'as the similarity function for the ranking loss in the img-txt embedding. You had %s'%args.joint_loss_similarity_function)
-
     '''
-    Setting the directory structure and testing for arguments
+    Set the output directory structure
     '''
+    # TODO: revisit the code related to masked text (may want to delete it)
     if args.use_masked_txt:
          args.text_data_dir = os.path.join(args.text_data_dir, 'masked')
     args.text_data_dir = os.path.join(args.text_data_dir, args.output_channel_encoding)
@@ -115,34 +137,28 @@ def main():
     else:
         args.model = 'model'
 
-    if args.copy_data_to_local and args.copy_zip_to_local:
-        raise Exception('Cannot copy all files and zip to local at the same time')
-
-    if args.cache_images and (args.copy_data_to_local or args.copy_zip_to_local):
-        raise Exception('Cannot cache images and copy images to local at the same time')
-
     if args.training_mode == 'supervised' or args.training_mode == 'supervised_masking':
         args.text_data_dir = os.path.join(args.text_data_dir, 'supervised', 'full')
         args.output_dir = os.path.join(args.output_dir, args.data_split_mode,
-                args.model, args.training_mode, args.id)
+                                       args.model, args.training_mode, args.id)
     elif 'semisupervised' in args.training_mode:
         args.text_data_dir = os.path.join(args.text_data_dir, 'semisupervised',
-                args.semisupervised_training_data, 'full')
+                                          args.semisupervised_training_data, 'full')
         args.output_dir = os.path.join(args.output_dir, args.data_split_mode, args.model, 
-                args.training_mode, args.semisupervised_training_data, args.id) 
+                                       args.training_mode, args.semisupervised_training_data, 
+                                       rgs.id) 
 
     args.reports_dir = os.path.join(args.output_dir, 'eval_reports')
     args.tsbd_dir = os.path.join(args.output_dir, 'tsbd_dir')
     args.checkpoints_dir = os.path.join(args.output_dir, 'checkpoints')
 
-    if os.path.exists(args.output_dir) and os.listdir(args.output_dir) \
-        and args.do_train and not args.overwrite_output_dir:
+    if os.path.exists(args.output_dir) and os.listdir(args.output_dir) and \
+            args.do_train and not args.overwrite_output_dir:
         raise ValueError("Output directory ({}) already exists and is not empty." \
             " Use".format(args.output_dir)+" --overwrite_output_dir to overcome.")
 
-    if not args.do_train and not args.do_eval:
-        raise Exception('Either do_train or do_eval flag must be set as true')
 
+    # I stopped here -- 6/10 3:30pm
     '''
     After argument checks, create the necessary directories. 
     Make sure no argument updating after this point.
