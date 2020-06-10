@@ -1,59 +1,70 @@
 '''
-Author: Geeticka Chauhan, Ruizhi Liao
-Main script to run the training and evaluation
+Authors: Geeticka Chauhan, Ruizhi Liao
+Main script to run training and evaluation of the image-text joint model
+for estimating the severity of pulmonary edema on MIMIC-CXR
 '''
-import torch
 import glob
 import pickle
 import os
 import sys
 from pathlib import Path
+from tqdm import tqdm_notebook, trange
+from multiprocessing import Pool, cpu_count
+import logging
+import time
+import uuid # For generating a unique id
+
 current_path = os.path.dirname(os.path.abspath(__file__))
 current_path = Path(current_path)
 parent_path = current_path.parent
 print('Project home directory: ', str(parent_path))
 sys.path.insert(0, str(parent_path)) # Do not use sys.path.append here
 print('sys.path: ', sys.path)
-from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, TensorDataset)
-from torch.nn import CrossEntropyLoss, MSELoss, BCEWithLogitsLoss
 
-from tqdm import tqdm_notebook, trange
-import os
+import torch
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
+from torch.nn import CrossEntropyLoss, MSELoss, BCEWithLogitsLoss
+from torch.utils.tensorboard import SummaryWriter
+
 from pytorch_transformers import BertTokenizer, BertModel, BertForMaskedLM, BertConfig
 from pytorch_transformers.optimization import AdamW, WarmupLinearSchedule
 
-from multiprocessing import Pool, cpu_count
 from joint_img_txt.model.model_utils import *
 from joint_img_txt.model import model_utils
 from joint_img_txt.model import convert_examples_to_features
-from scripts import main_utils, parser
 from joint_img_txt.model.model import ImageTextModel
+from scripts import main_utils, parser
 
-from torch.utils.tensorboard import SummaryWriter
-
-# OPTIONAL: if you want to have more information on what's happening, activate the logger as follows
-import logging
-import time
-import uuid # For generating a unique id
 
 def main():
-    assert torch.cuda.is_available(), "No GPU/CUDA is detected!"
     args = parser.get_args()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    assert torch.cuda.is_available(), "No GPU/CUDA is detected!"
+    # Training on CPU is almost infeasible,
+    # but evaluation/inference can be done on CPU
+
     '''
     Do initial argument checks
     '''
     if args.id == 'dummy': 
-    # If no ID was specified, then we will generate a new randomly named folder
         args.id = str(uuid.uuid4())
+        # If no ID is specified,
+        # then we will generate a radom ID as the folder name of this run
 
-    if args.training_mode != 'supervised' \
-        and args.training_mode != 'semisupervised_phase1' \
-        and args.training_mode != 'semisupervised_phase2':
-        raise Exception('You can either do supervised or semisupervised')
+    if args.training_mode != 'supervised' and \
+            args.training_mode != 'semisupervised_phase1' and \
+            args.training_mode != 'semisupervised_phase2':
+        raise Exception('You can do either supervised or semisupervised training!')
+        # 'semisupervised_phase1' is essentially unsupervised learning of the joint model
+        # on chest radiographs and radiology reports
+        # 'semisupervised_phase2' is supervised learning with the initialization 
+        # from the training results of semisupervised_phase1. 
 
-    if args.semisupervised_training_data != 'allCHF' and args.semisupervised_training_data != 'allCXR':
-        raise Exception('You can only train semisupervised model on all CHF cohort or all of CXR')
+    if args.semisupervised_training_data != 'allCXR' and \
+            args.semisupervised_training_data != 'allCHF':
+        raise Exception('You can train the model on all MIMIC-CXR (allCXR) or \
+            the congestive heart failure cohort (allCHF)')
 
     if args.training_mode == 'semisupervised_phase2':
         if not os.path.isdir(args.joint_semisupervised_pretrained_checkpoint):
