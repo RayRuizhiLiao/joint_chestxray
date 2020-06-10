@@ -23,11 +23,11 @@ from pytorch_transformers import BertTokenizer, BertModel, BertForMaskedLM, Bert
 from pytorch_transformers.optimization import AdamW, WarmupLinearSchedule
 
 from multiprocessing import Pool, cpu_count
-from chestxray_joint.model.model_utils import *
-from chestxray_joint.model import model_utils
-from chestxray_joint.model import convert_examples_to_features
+from joint_img_txt.model.model_utils import *
+from joint_img_txt.model import model_utils
+from joint_img_txt.model import convert_examples_to_features
 from scripts import main_utils, parser
-from chestxray_joint.model.model import ImageTextModel
+from joint_img_txt.model.model import ImageTextModel
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -251,7 +251,7 @@ def main():
         for checkpoint in checkpoints:
             #logger = logging.getLogger('pytorch_transformers.modeling_utils').setLevel(logging.WARN)
             epoch_number = checkpoint.split('-')[-1] if len(checkpoints) > 1 else ""
-            logger = logging.getLogger('chestxray_joint.model.model').setLevel(logging.INFO)
+            logger = logging.getLogger('joint_img_txt.model.model').setLevel(logging.INFO)
             model = ImageTextModel.from_pretrained(checkpoint)
             model.to(device)
             dump_prediction_files = False

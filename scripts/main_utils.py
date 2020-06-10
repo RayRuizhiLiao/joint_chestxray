@@ -7,8 +7,8 @@ import torch
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, TensorDataset)
 from torch.utils.tensorboard import SummaryWriter #TODO: this will only work with Pytorch 1.0
 from tqdm import tqdm, trange
-from chestxray_joint.model import model_utils
-from chestxray_joint.model import loss as custom_loss
+from joint_img_txt.model import model_utils
+from joint_img_txt.model import loss as custom_loss
 from scripts import metrics as eval_metrics
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss
 from torch.nn import Softmax,LogSoftmax
