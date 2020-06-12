@@ -29,8 +29,6 @@ from torch.utils.tensorboard import SummaryWriter
 from pytorch_transformers import BertTokenizer, BertModel, BertForMaskedLM, BertConfig
 from pytorch_transformers.optimization import AdamW, WarmupLinearSchedule
 
-from joint_img_txt.model.model_utils import *
-from joint_img_txt.model import model_utils
 from joint_img_txt.model import convert_examples_to_features
 from joint_img_txt.model.model import ImageTextModel
 from scripts import main_utils, parser
@@ -235,42 +233,64 @@ def main():
     # tokenizer is not something that constantly needs to be saved 
     # because only the pre-trained bert model determines this.
 
-    # I stopped here -- 6/10 5pm
     '''
-    Train or evaluate the model
+    Train the model
     '''
     if args.do_train:
         start_time = time.time()
         logger = logging.getLogger('pytorch_transformers.modeling_utils').setLevel(logging.INFO)
 
-        config = BertConfig.from_json_file(os.path.join(args.bert_pretrained_dir, args.config_name))
+        '''
+        Load a pretrained joint model or pretrained BERT model 
+        '''
+        config = BertConfig.from_json_file(os.path.join(args.bert_pretrained_dir, 
+                                                        args.config_name))
         config.num_labels = 3 if args.output_channel_encoding == 'multilabel' else 4
         if args.training_mode == 'semisupervised_phase2':
-            model = ImageTextModel.from_pretrained(args.joint_semisupervised_pretrained_checkpoint)
-            print('Pretrained model:\t {}'.format(args.joint_semisupervised_pretrained_checkpoint))
+            model = ImageTextModel.from_pretrained(
+                args.joint_semisupervised_pretrained_checkpoint)
+            print('Pretrained model:\t {}'.\
+                format(args.joint_semisupervised_pretrained_checkpoint))
         elif args.use_pretrained_checkpoint:
-            model = ImageTextModel.from_pretrained(args.joint_semisupervised_pretrained_checkpoint)
-            print('Pretrained model:\t {}'.format(args.joint_semisupervised_pretrained_checkpoint))            
+            model = ImageTextModel.from_pretrained(
+                args.joint_semisupervised_pretrained_checkpoint)
+            print('Pretrained model:\t {}'.\
+                format(args.joint_semisupervised_pretrained_checkpoint))            
         else:
-            model = ImageTextModel(config=config, pretrained_bert_dir=args.bert_pretrained_dir)
-            print('Pretrained model:\t {}'.format(args.bert_pretrained_dir))
+            model = ImageTextModel(config=config, 
+                                   pretrained_bert_dir=args.bert_pretrained_dir)
+            print('No pretrained joint model, loading pretrained BERT model:\t {}'.\
+                format(args.bert_pretrained_dir))
 
+        '''
+        Perform model training
+        '''
         model.to(device)
         loss_info = main_utils.train(args, device, model, tokenizer)
-        # Reset the logger now
+        
+        '''
+        Reset the logger now
+        '''
         logger = logging.getLogger(__name__)
         logger.info("Saving model checkpoint to %s", args.output_dir)
           
-        # Take care of distributed/parallel training
+        '''
+        Take care of distributed/parallel training
+        '''
         model_to_save = model.module if hasattr(model, 'module') else model
 
-        # new way of saving
+        '''
+        Save model training results
+        '''
         model_to_save.save_pretrained(args.output_dir)
         tokenizer.save_pretrained(args.output_dir)
         torch.save(args, os.path.join(args.output_dir, 'training_args.bin'))
         main_utils.to_json_file(loss_info, os.path.join(args.output_dir, 'loss_info.json'))
         end_time = time.time()
-    
+
+    '''
+    Evaluate the model
+    '''
     results_txt = {}
     results_img = {}
     losses_info = {}
@@ -278,17 +298,17 @@ def main():
     # will deal with this later. Just copy eval images here 
     if args.do_eval:
         start_time = time.time()
+
         checkpoints = [args.output_dir]
-        if args.eval_all_checkpoints: #TODO: have the ability to have another flag to control whether to 
-            # print all evaluation numbers, and whether to write them all into reports - actually
-            # should just have a logging for that
-            checkpoints = list(os.path.dirname(c) for c in sorted(glob.glob(args.output_dir + '/**/' +
-                args.weights_name, recursive=True)))
+        # The final checkpoint is in the args.output_dir
+
+        if args.eval_all_checkpoints:
+            checkpoints = list(os.path.dirname(c) for c in sorted(
+                glob.glob(args.output_dir + '/**/' + args.weights_name, recursive=True)))
+
         logger = logging.getLogger(__name__)
         logger.info("Evaluate %d checkpoints ", len(checkpoints))
-        eval_dataset, _ = model_utils.load_and_cache_examples(args, tokenizer)
         for checkpoint in checkpoints:
-            #logger = logging.getLogger('pytorch_transformers.modeling_utils').setLevel(logging.WARN)
             epoch_number = checkpoint.split('-')[-1] if len(checkpoints) > 1 else ""
             logger = logging.getLogger('joint_img_txt.model.model').setLevel(logging.INFO)
             model = ImageTextModel.from_pretrained(checkpoint)
@@ -296,27 +316,23 @@ def main():
             dump_prediction_files = False
             if checkpoint == args.output_dir:
                 dump_prediction_files = True
-                epoch_number = 'final' # fix the epoch number for the final dumping
+                epoch_number = 'final'
             print('***    Epoch {}'.format(epoch_number))
             print('\t\t\t Checkpoint: {}'.format(checkpoint))
-            result_txt, result_img = main_utils.evaluate(args, device, model, tokenizer, eval_dataset,
-                    dump_prediction_files, prefix=epoch_number)
+            result_txt, result_img = main_utils.evaluate(
+                args, device, model, tokenizer,
+                dump_prediction_files, prefix=epoch_number)
             result_txt = dict((k + '_{}'.format(epoch_number), v) for k, v in result_txt.items())
             result_img = dict((k + '_{}'.format(epoch_number), v) for k, v in result_img.items())
-            #loss_info = dict((k + '_{}'.format(epoch_number), v) for k, v in loss_info.items())
             results_txt.update(result_txt)
             results_img.update(result_img)
-            #losses_info.update(loss_info)
 
-        #logger = logging.getLogger(__name__)
         main_utils.to_json_file(results_txt, os.path.join(args.reports_dir, 'results_txt.json'))
         main_utils.to_json_file(results_img, os.path.join(args.reports_dir, 'results_img.json'))
-        #main_utils.to_json_file(losses_info, os.path.join(args.reports_dir, 'losses_info.json'))
         end_time = time.time()
-        
 
     print("\n\nTotal time to run:", round((end_time-start_time)/3600.0, 2))
-    # in case this code is buggy, throw it at the very end
+
     if args.copy_data_to_local:
         local_images = LocalDiskData('', args.use_png, '', args.img_localdisk_data_dir,
                 args.id) # this is fine i just want to delete folder

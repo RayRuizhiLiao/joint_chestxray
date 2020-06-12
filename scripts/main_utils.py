@@ -316,7 +316,7 @@ def train(args, device, model, tokenizer):
 
 
 # the evaluation script
-def evaluate(args, device, model, tokenizer, eval_dataset, dump_prediction_files=False, prefix=""):
+def evaluate(args, device, model, tokenizer, dump_prediction_files=False, prefix=""):
     logger = logging.getLogger(__name__)
     eval_output_dir = args.reports_dir
 
@@ -328,7 +328,7 @@ def evaluate(args, device, model, tokenizer, eval_dataset, dump_prediction_files
         exit(0)
         #    os.makedirs(eval_output_dir)
 
-
+    eval_dataset, _ = model_utils.load_and_cache_examples(args, tokenizer)
     eval_sampler = SequentialSampler(eval_dataset)
     eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size,
             num_workers=args.num_cpu_workers, pin_memory=True)
