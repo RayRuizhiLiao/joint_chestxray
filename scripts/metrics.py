@@ -191,8 +191,7 @@ def get_acc_f1(labels, preds_logits, output_channel_encoding):
             # "tn": tn,
             # "fp": fp,
             # "fn": fn
-            },
-           new_labels, preds
+            }, new_labels, preds
 
 def compute_acc_f1_metrics(labels, preds, output_channel_encoding):
     assert len(preds) == len(labels)
