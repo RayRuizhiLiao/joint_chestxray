@@ -1,5 +1,5 @@
 '''
-Author: Geeticka Chauhan, Ruizhi Liao
+Authors: Geeticka Chauhan, Ruizhi Liao
 Parser for the arguments used by the joint model, including the data directory
 '''
 
