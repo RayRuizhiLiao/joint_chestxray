@@ -6,6 +6,14 @@ This repository incorporates the algorithms presented in <br />
 G. Chauhan<sup>\*</sup>, R. Liao<sup>\*</sup> et al. Joint Modeling of Chest Radiographs and Radiology Reports for Pulmonary Edema Assessment. *International Conference on Medical Image Computing and Computer-Assisted Intervention*, 2020. <br />
 (<sup>\*</sup> indicates equal contribution)
 
+# Instructions
+
+## Setup
+
+## Training
+
+## Testing
+
 # Contact
 
 Geeticka Chauhan: geeticka [at] mit.edu <br />
