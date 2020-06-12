@@ -1,17 +1,26 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from pytorch_transformers.modeling_bert import BertPreTrainedModel, PretrainedConfig
-from pytorch_transformers import BertModel
+'''
+Authors: Geeticka Chauhan, Ruizhi Liao
+This script contains the image-text joint model
+that encodes image and text features in a joint embedding space.
+Two classifiers with the same network architecture perform classification
+on the image feature and the text feature respectively.
+'''
 import os
 import logging
 import math
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+from pytorch_transformers.modeling_bert import BertPreTrainedModel, PretrainedConfig
+from pytorch_transformers import BertModel
+
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=dilation, groups=groups, bias=False, dilation=dilation)
-
 
 def conv1x1(in_planes, out_planes, stride=1):
     """1x1 convolution"""
@@ -61,7 +70,6 @@ class BasicBlock(nn.Module):
 
 class ImageResNet(nn.Module):
 
-#make the output channels 3 to return the logits similar to text
     def __init__(self, block, layers, output_channels=3, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None):
@@ -72,13 +80,13 @@ class ImageResNet(nn.Module):
 
         self.inplanes = 8
         self.dilation = 1
-#         if replace_stride_with_dilation is None:
-#             # each element in the tuple indicates if we should replace
-#             # the 2x2 stride with a dilated convolution instead
-#             replace_stride_with_dilation = [False, False, False]
-#         if len(replace_stride_with_dilation) != 3:
-#             raise ValueError("replace_stride_with_dilation should be None "
-#                              "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+        # if replace_stride_with_dilation is None:
+        #     # each element in the tuple indicates if we should replace
+        #     # the 2x2 stride with a dilated convolution instead
+        #     replace_stride_with_dilation = [False, False, False]
+        # if len(replace_stride_with_dilation) != 3:
+        #     raise ValueError("replace_stride_with_dilation should be None "
+        #                      "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
         self.groups = groups
         self.base_width = width_per_group
         self.conv1 = nn.Conv2d(1, self.inplanes, kernel_size=7, stride=4, padding=3,
@@ -170,7 +178,7 @@ class ImageResNet(nn.Module):
         return outputs # z, (logits), (layer6 output)
 
 
-# adapted from
+# Adapted from
 # https://medium.com/huggingface/multi-label-text-classification-using-bert-the-mighty-transformer-69714fa3fb3d
 class TextBertForSequenceClassification(BertPreTrainedModel):
     """
@@ -196,9 +204,9 @@ class TextBertForSequenceClassification(BertPreTrainedModel):
                             attention_mask=attention_mask, head_mask=head_mask)
         # When invesigating what is going on, use_all_sequence needs to be investigated further
         # because the hidden states of all the tokens seemed to be the same
-        #print('CLS output', outputs[1])
-        #print('CLS input', outputs[0][:,0])
-        #print('Hidden states', outputs[0])
+        # print('CLS output', outputs[1])
+        # print('CLS input', outputs[0][:,0])
+        # print('Hidden states', outputs[0])
         if not use_all_sequence:
             pooled_output = outputs[1] # this is the default pooled output i.e. [CLS]
         else:
@@ -220,7 +228,8 @@ class TextBertForSequenceClassification(BertPreTrainedModel):
             outputs = (pooled_output,) + outputs[2:]
         else:
             logits = self.classifier(pooled_output)
-            outputs = (pooled_output, logits,) + outputs[2:]  # add hidden states and attention if they are here
+            outputs = (pooled_output, logits,) + outputs[2:]
+            # add hidden states and attention if they are here
         if use_all_sequence and output_img_txt_attn:
             outputs = outputs + (img_txt_attn,)
         return outputs  # pooled_output, (logits), (hidden_states), (txt_attentions), (img_txt_attn)
@@ -232,8 +241,8 @@ class TextBertForSequenceClassification(BertPreTrainedModel):
     def unfreeze_bert_encode(self):
         for param in self.bert.parameters():
             param.requires_grad = True
-            
-            
+
+
 # Bert Attention pooler based on simple pooler in hugging face repo
 # ref:
 # https://github.com/huggingface/transformers/blob/b33a385091de604afb566155ec03329b84c96926/pytorch_transformers/modeling_bert.py#L455
@@ -343,42 +352,44 @@ class TextBertAttentionPooler(nn.Module):
         return (pooled_output,)
 
 
-
 class ImageTextModel(nn.Module):
     """
     BERT model for multi label classification. Here we will treat the problem with 
     ordinal encoding. Note: because we are doing ordinal encoding, num_labels is actually 3 
     and not 4. So make sure to feed num_labels - 1 to this one. 
     """
-    def __init__(self, config, pretrained_bert_dir=None, block=BasicBlock, layers=[2, 2, 2, 2, 2, 2, 2], 
-                 zero_init_residual=False, groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None):
-        
+    def __init__(self, config, pretrained_bert_dir=None, block=BasicBlock, 
+                 layers=[2, 2, 2, 2, 2, 2, 2], zero_init_residual=False, groups=1, 
+                 width_per_group=64, replace_stride_with_dilation=None, norm_layer=None):
+
         super(ImageTextModel, self).__init__()
         if pretrained_bert_dir != None:
             self.text_model =\
             TextBertForSequenceClassification.from_pretrained(pretrained_bert_dir,
-                                                                        config=config)
+                                                              config=config)
         else:
             self.text_model = TextBertForSequenceClassification(config=config)
+
         self.img_model = ImageResNet(block=block, 
                                      layers=layers, 
-                                     output_channels=config.num_labels, # image and text model should have same number of channels
+                                     output_channels=config.num_labels, 
+                                     # image and text model should have same number of channels
                                      zero_init_residual=zero_init_residual, 
                                      groups=groups, 
                                      width_per_group=width_per_group, 
                                      replace_stride_with_dilation=replace_stride_with_dilation,
                                      norm_layer=norm_layer)
 
-        
-        self.config = config # Bert will throw an error if config is not in the right format
+
+        self.config = config 
+        # Bert will throw an error if config is not in the right format
         
         self.classifier = nn.Linear(self.config.hidden_size, self.config.num_labels)
 
-    def forward(self, input_img, input_ids, token_type_ids=None, attention_mask=None, labels=None,
-                position_ids=None, head_mask=None, same_classifier=False, bert_pool_last_hidden=False,
-                bert_pool_use_img=False, bert_pool_img_lowerlevel=False, output_img_txt_attn=False):
-        
+    def forward(self, input_img, input_ids, token_type_ids=None, attention_mask=None, 
+                labels=None, position_ids=None, head_mask=None, same_classifier=False,
+                bert_pool_last_hidden=False, bert_pool_use_img=False, 
+                bert_pool_img_lowerlevel=False, output_img_txt_attn=False):
         '''
         We will get the output of the image model first to get the image embedding
         '''
@@ -401,15 +412,15 @@ class ImageTextModel(nn.Module):
         elif bert_pool_use_img and not bert_pool_img_lowerlevel:
             img_embedding = z_img
         outputs_txt = self.text_model.forward(input_ids=input_ids,
-                                                token_type_ids=token_type_ids,
-                                                attention_mask=attention_mask,
-                                                labels=labels,
-                                                position_ids=position_ids,
-                                                head_mask=head_mask, 
-                                                same_classifier=same_classifier,
-                                                use_all_sequence=bert_pool_last_hidden,
-                                                img_embedding= img_embedding, 
-                                                output_img_txt_attn=output_img_txt_attn)
+                                              token_type_ids=token_type_ids,
+                                              attention_mask=attention_mask,
+                                              labels=labels,
+                                              position_ids=position_ids,
+                                              head_mask=head_mask, 
+                                              same_classifier=same_classifier,
+                                              use_all_sequence=bert_pool_last_hidden,
+                                              img_embedding= img_embedding, 
+                                              output_img_txt_attn=output_img_txt_attn)
 
         z_txt = outputs_txt[0]
         if same_classifier:
@@ -428,8 +439,9 @@ class ImageTextModel(nn.Module):
     
     # based on https://github.com/huggingface/transformers/blob/v1.0.0/pytorch_transformers/modeling_utils.py
     def save_pretrained(self, save_directory): # taken from huggingface, pretrained transformers
-        """ Save a model with its configuration file to a directory, so that it
-            can be re-loaded using the `from_pretrained(save_directory)` class method.
+        """ 
+        Save a model with its configuration file to a directory, so that it
+        can be re-loaded using the `from_pretrained(save_directory)` class method.
         """
         
         assert os.path.isdir(save_directory), "Saving path should be a directory where the model and configuration can be saved"
