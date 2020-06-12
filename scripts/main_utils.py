@@ -1,6 +1,6 @@
 '''
-Author: Geeticka Chauhan, Ruizhi Liao
-This file contains the scripts to do training and evaluation and other utilities used by the main
+Authors: Geeticka Chauhan, Ruizhi Liao
+This script contains training, evaluation, and other utilities used by the main script
 '''
 import os
 import torch

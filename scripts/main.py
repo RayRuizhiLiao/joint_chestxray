@@ -13,6 +13,10 @@ from multiprocessing import Pool, cpu_count
 import logging
 import time
 import uuid # For generating a unique id
+import subprocess
+
+git_commit = subprocess.check_output(["git", "describe"]).strip()
+print("Git commit: ", git_commit)
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 current_path = Path(current_path)
