@@ -14,17 +14,17 @@ import logging
 import time
 import uuid # For generating a unique id
 
-import git
-repo = git.Repo()
-sha = repo.head.object.hexsha
-print("Current git commit sha: ", sha)
-
 current_path = os.path.dirname(os.path.abspath(__file__))
 current_path = Path(current_path)
 parent_path = current_path.parent
 print('Project home directory: ', str(parent_path))
 sys.path.insert(0, str(parent_path)) # Do not use sys.path.append here
 print('sys.path: ', sys.path)
+
+import git
+repo = git.Repo(path=parent_path)
+sha = repo.head.object.hexsha
+print("Current git commit sha: ", sha)
 
 import torch
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
