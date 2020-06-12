@@ -1,4 +1,7 @@
-
+'''
+Authors: Geeticka Chauhan, Ruizhi Liao
+This script contains metrics for evaluating model predictions
+'''
 from scipy.stats import logistic
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
@@ -11,20 +14,9 @@ from scipy.special import softmax
 '''
 Evaluation related helpers
 '''
-# in the case of gold labels, convert ordinal labels to predictions
 def convert_ordinal_label_to_labels(ordinal_label):
     return np.sum(ordinal_label)
-    # ordinal_label = "".join(str(v) for v in ordinal_label.tolist())
-    # if ordinal_label == '000':
-    #     return 0
-    # elif ordinal_label == '100':
-    #     return 1
-    # elif ordinal_label == '110':
-    #     return 2
-    # elif ordinal_label == '111':
-    #     return 3
-    # else:
-    #     raise Exception("No other possibilities of ordinal labels are possible")
+    # in the case of gold labels, convert ordinal labels to predictions
 
 def convert_sigmoid_prob_to_labels(pred):
     sigmoid_pred = logistic.cdf(pred)
@@ -40,8 +32,11 @@ def convert_sigmoid_prob_to_labels(pred):
     else:
         return 0
 
-# Given the 4 channel output of multiclass, compute the 3 channel ordinal auc
 def compute_ordinal_auc_from_multiclass(labels_raw, preds):
+    """
+    Given the 4 channel output of multiclass, compute the 3 channel ordinal auc
+    """
+
     if len(labels_raw) != len(preds):
         raise ValueError('The size of the labels does not match the size the preds!')
     num_datapoints = len(labels_raw) # labels_raw needs to be between 0 and 1
@@ -60,8 +55,11 @@ def compute_ordinal_auc_from_multiclass(labels_raw, preds):
         ordinal_aucs.append(ordinal_auc_val)
     return ordinal_aucs
 
-# Given the 4 channel output of multiclass, compute the 3 channel ordinal auc
 def compute_ordinal_auc_onehot_encoded(labels, preds):
+    """
+    Given the 4 channel output of multiclass, compute the 3 channel ordinal auc
+    """
+
     if len(labels) != len(preds):
         raise ValueError('The size of the labels does not match the size the preds!')
     num_datapoints = len(labels)
@@ -80,8 +78,11 @@ def compute_ordinal_auc_onehot_encoded(labels, preds):
         ordinal_aucs.append(ordinal_auc_val)
     return ordinal_aucs
 
-# expects to take labels and preds dimensionality batch/total_data_len X channels
 def compute_auc(labels, preds, output_channel_encoding='multilabel'):
+    """
+    expects to take labels and preds dimensionality batch/total_data_len X channels
+    """
+
     if len(labels) != len(preds):
         raise ValueError('The size of the labels does not match the size the preds!')
     if output_channel_encoding != 'multilabel' and output_channel_encoding != 'multiclass':
@@ -156,14 +157,16 @@ def compute_auc(labels, preds, output_channel_encoding='multilabel'):
         pairwise_aucs['1v3'] = compute_pairwise_auc(labels, preds, 1, 3)
         pairwise_aucs['2v3'] = compute_pairwise_auc(labels, preds, 2, 3)
 
-
     return aucs, pairwise_aucs
 
-# expects dimensionality batch/size_of_data X channels
-# expects 3 channel output and converts ordinal values to non ordinal using sigmoid and 
-# threshold of 0.5
 def get_acc_f1(labels, preds_logits, output_channel_encoding):
-#     mcc = matthews_corrcoef(labels, preds)
+    """
+    expects dimensionality batch/size_of_data X channels
+    expects 3 channel output and converts ordinal values to non ordinal using sigmoid and 
+    threshold of 0.5
+    """
+
+    # mcc = matthews_corrcoef(labels, preds)
     # in the above case we have to set the threshold
     if output_channel_encoding == 'multilabel':
         new_labels = [convert_ordinal_label_to_labels(ordinal_label) for ordinal_label in labels]
@@ -175,30 +178,33 @@ def get_acc_f1(labels, preds_logits, output_channel_encoding):
     precision, recall, f1, _ = precision_recall_fscore_support(new_labels, preds)
     accuracy = accuracy_score(new_labels, preds)
     macro_f1 = np.mean(f1)
-#     tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
+    # tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
     def round_nd_array(array):
         return [round(val, 4) for val in array]
 
-    return {
-        "accuracy": round(accuracy, 4),
-        "f1": round_nd_array(f1),
-        "precision": round_nd_array(precision),
-        "recall": round_nd_array(recall),
-        'macro_f1': round(macro_f1, 4) 
-#         "tp": tp,
-#         "tn": tn,
-#         "fp": fp,
-#         "fn": fn
-    }, new_labels, preds
+    return {"accuracy": round(accuracy, 4),
+            "f1": round_nd_array(f1),
+            "precision": round_nd_array(precision),
+            "recall": round_nd_array(recall),
+            "macro_f1": round(macro_f1, 4) 
+            # "tp": tp,
+            # "tn": tn,
+            # "fp": fp,
+            # "fn": fn
+            },
+           new_labels, preds
 
 def compute_acc_f1_metrics(labels, preds, output_channel_encoding):
     assert len(preds) == len(labels)
     return get_acc_f1(labels, preds, output_channel_encoding) 
 
-# computes the MSE of the 3 channel output using 
-# preds = expected value of predictions = sum of the 3 channel outputs squashed by sigmoid (scalar)
-# out_labels = sum of the channel outputs (scalar)
 def compute_mse(preds_logits, out_label, output_channel_encoding='multilabel'):
+    """
+    computes the MSE of the 3 channel output using 
+    preds = expected value of predictions = sum of the 3 channel outputs 
+    squashed by sigmoid (scalar)   
+    out_labels = sum of the channel outputs (scalar)
+    """
     if output_channel_encoding != 'multilabel' and output_channel_encoding != 'multiclass':
         raise Exception("You can only compute MSE for multiclass or multilabel classification")
     if output_channel_encoding == 'multilabel':
