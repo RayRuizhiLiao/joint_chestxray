@@ -1,11 +1,12 @@
 '''
-Author: Geeticka Chauhan, Ruizhi Liao
+Authors: Geeticka Chauhan, Ruizhi Liao
 Custom loss functions for the joint model
 '''
+import random
 
 import torch
 from torch.nn import CosineSimilarity, MarginRankingLoss
-import random
+
 
 def ranking_loss(z_image, z_text, y, report_id, 
                  similarity_function='dot'):
