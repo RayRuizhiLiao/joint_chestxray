@@ -14,9 +14,11 @@ G. Chauhan<sup>\*</sup>, R. Liao<sup>\*</sup> et al. Joint Modeling of Chest Rad
 
 ## Testing
 
-# Notes on Data
+# Notes on Data and Labels
 
 ## MIMIC-CXR
+
+## Pulmonary edema severity
 
 ## Regex and expert labeling
 
