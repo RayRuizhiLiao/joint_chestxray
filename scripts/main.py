@@ -15,7 +15,7 @@ import time
 import uuid # For generating a unique id
 
 import git
-repo = git.Repo(search_parent_directories=True)
+repo = git.Repo()
 sha = repo.head.object.hexsha
 print("Current git commit sha: ", sha)
 
