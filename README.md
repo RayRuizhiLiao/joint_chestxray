@@ -14,6 +14,12 @@ G. Chauhan<sup>\*</sup>, R. Liao<sup>\*</sup> et al. Joint Modeling of Chest Rad
 
 ## Testing
 
+# Notes on Data
+
+## MIMIC-CXR
+
+## Regex and expert labeling
+
 # Contact
 
 Geeticka Chauhan: geeticka [at] mit.edu <br />
