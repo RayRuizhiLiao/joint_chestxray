@@ -21,7 +21,7 @@ print('Project home directory: ', str(parent_path))
 sys.path.insert(0, str(parent_path)) # Do not use sys.path.append here
 print('sys.path: ', sys.path)
 
-import git
+import git # This is used for tracking commit sha
 repo = git.Repo(path=parent_path)
 sha = repo.head.object.hexsha
 print("Current git commit sha: ", sha)
