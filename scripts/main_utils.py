@@ -3,38 +3,29 @@ Authors: Geeticka Chauhan, Ruizhi Liao
 This script contains training, evaluation, and other utilities used by the main script
 '''
 import os
-import torch
-from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, TensorDataset)
-from torch.utils.tensorboard import SummaryWriter #TODO: this will only work with Pytorch 1.0
 from tqdm import tqdm, trange
-from joint_img_txt.model import model_utils
-from joint_img_txt.model import loss as custom_loss
-from scripts import metrics as eval_metrics
-from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss
-from torch.nn import Softmax,LogSoftmax
 from scipy.stats import logistic
 from scipy.special import softmax
-
-from pytorch_transformers.optimization import AdamW, WarmupLinearSchedule
-import torch.optim.lr_scheduler as lr_scheduler
-import torchvision
 import logging
 import numpy as np
 import json
 import sklearn
 import time
 
+import torch
+from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, TensorDataset)
+from torch.utils.tensorboard import SummaryWriter #TODO: this will only work with Pytorch 1.0
+import torch.optim.lr_scheduler as lr_scheduler
+from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss
+from torch.nn import Softmax,LogSoftmax
 
-#def debug(args, device, model, tokenizer):
-#    train_dataset, num_labels = model_utils.load_and_cache_examples(args, tokenizer, evaluate=False)
-#    total_time = 0
-#    for i in range(0, len(train_dataset)):
-#        start = time.time()
-#        item = train_dataset[i]
-#        end = time.time()
-#        print('end - start', end - start)
-#        total_time += end - start
-#    print('total time', total_time)
+import torchvision
+from pytorch_transformers.optimization import AdamW, WarmupLinearSchedule
+
+from joint_img_txt.model import model_utils
+from joint_img_txt.model import loss as custom_loss
+from scripts import metrics as eval_metrics
+
 
 # The training function
 def train(args, device, model, tokenizer):
@@ -64,7 +55,7 @@ def train(args, device, model, tokenizer):
     Create an optimizer and a scheduler instance 
     '''
     # Below is a little complicated - 
-    # they changed the implementation of the BertAdam to make it AdamW without
+    # they changed the implementation of the BertAdam to make AdamW without
     # any gradient clipping so now you have to do your own. 
     # Read details at the bottom of readme at 
     # https://github.com/huggingface/pytorch-transformers#migrating-from-pytorch-pretrained-bert-to-pytorch-transformers
@@ -117,18 +108,17 @@ def train(args, device, model, tokenizer):
     # https://discuss.pytorch.org/t/why-do-we-need-to-set-the-gradients-manually-to-zero-in-pytorch/4903/7
     # to check the purpose of zero-ing out the gradients between minibatches
     train_iterator = trange(int(args.num_train_epochs), desc="Epoch")
-    # pay attention to why model.zero_grad above and model_train in the loop
-    # loss is provided when labels is provided to the model
-    # In my case I am not doing that
     model.train()
     for epoch in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration")
         tr_epoch_loss = 0
         for step, batch in enumerate(epoch_iterator):
             batch = tuple(t.to(device=device, non_blocking=True) for t in batch)
-            image, label_raw, txt_ids, txt_mask, txt_segment_ids, label_onehot_or_ordinal, report_id = batch
-            # label_raw is always 0-3 and label_onehot_or_ordinal is one-hot or ordinal depending on whether
-            # multiclass or multilabel
+            image, label_raw, txt_ids, txt_mask, txt_segment_ids, \
+            label_onehot_or_ordinal, report_id = batch
+            # label_raw is always 0-3 and 
+            # label_onehot_or_ordinal is one-hot or ordinal 
+            # depending on if it's multiclass or multilabel
             # report_id is the radiology report study ID that's unique to each report
 
             inputs = {  'input_img':                image,
@@ -141,13 +131,12 @@ def train(args, device, model, tokenizer):
                         'bert_pool_use_img':        args.bert_pool_use_img,
                         'bert_pool_img_lowerlevel': args.bert_pool_img_lowerlevel} 
 
-            # labels is None so that I can just get logits and apply loss here
-            
             outputs = model(**inputs)
-            img_embedding, img_logits, txt_embedding, txt_logits = outputs[:4]  
-            # model outputs are always tuple in pytorch-transformers (see doc)
-            
-            if args.output_channel_encoding == 'multilabel' and args.training_mode != 'semisupervised_phase1':
+            img_embedding, img_logits, txt_embedding, txt_logits = outputs[:4]
+            # Model outputs are always tuple in pytorch-transformers (see doc)
+
+            if args.output_channel_encoding == 'multilabel' and \
+                    args.training_mode != 'semisupervised_phase1':
                 # Replace the image label with the ordinally encoded label
                 label_ordinal = label_onehot_or_ordinal
 
@@ -156,14 +145,16 @@ def train(args, device, model, tokenizer):
                                               label_ordinal.view(-1, num_labels).float())
                 txt_loss = BCE_loss_criterion(txt_logits.view(-1, num_labels), 
                                               label_ordinal.view(-1, num_labels).float())
-
-            elif args.output_channel_encoding == 'multiclass' and args.training_mode != 'semisupervised_phase1':
+            elif args.output_channel_encoding == 'multiclass' and \
+                    args.training_mode != 'semisupervised_phase1':
                 label = label_raw
-                CrossEntropyCriterion = CrossEntropyLoss() # includes the softmax and only accepts label 0-3
+                CrossEntropyCriterion = CrossEntropyLoss() 
+                # In this case, softmax is added in the model 
+                # and the CrossEntropyCriterion only accepts raw labels 0-3
                 img_loss = CrossEntropyCriterion(img_logits.view(-1, num_labels),
-                                                label.view(-1).long())
+                                                 label.view(-1).long())
                 txt_loss = CrossEntropyCriterion(txt_logits.view(-1, num_labels),
-                                                label.view(-1).long())
+                                                 label.view(-1).long())
 
             if args.use_imputed_labels:
                 if args.output_channel_encoding == 'multilabel':
@@ -315,7 +306,7 @@ def train(args, device, model, tokenizer):
             'last_epoch_joint_loss': last_epoch_joint_loss / last_epoch_global_step}
 
 
-# the evaluation script
+# The evaluation function
 def evaluate(args, device, model, tokenizer, dump_prediction_files=False, prefix=""):
     logger = logging.getLogger(__name__)
     eval_output_dir = args.reports_dir
@@ -493,8 +484,8 @@ def evaluate(args, device, model, tokenizer, dump_prediction_files=False, prefix
     return results_txt, results_img
 
 def to_json_string(dictionary):
-        """Serializes this instance to a JSON string."""
-        return json.dumps(dictionary, indent=2, sort_keys=True) + "\n"
+    """Serializes this instance to a JSON string."""
+    return json.dumps(dictionary, indent=2, sort_keys=True) + "\n"
 
 def to_json_file(dictionary, json_file_path):
     """ Save this instance to a json file."""
