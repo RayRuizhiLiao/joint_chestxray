@@ -1,6 +1,6 @@
 '''
-Author: Geeticka Chauhan, Ruizhi Liao
-Adapted from pytorch_pretrained_bert/examples/run_classifier_dataset_utils.py
+Authors: Geeticka Chauhan, Ruizhi Liao
+This script contains data I/O and preprocessing utilities used by the model script
 '''
 from __future__ import absolute_import, division, print_function
 
@@ -15,20 +15,25 @@ import scipy.ndimage as ndimage
 from shutil import copyfile
 import shutil
 import time
-from pytorch_transformers.modeling_bert import BertPreTrainedModel
-from pytorch_transformers import BertModel
-from joint_img_txt.model.convert_examples_to_features import convert_examples_to_features_multilabel
-from joint_img_txt.model.convert_examples_to_features import convert_examples_to_features
-
+from zipfile import ZipFile
 from math import floor, ceil
+
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, Dataset)
 import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss, MSELoss, BCEWithLogitsLoss
-from zipfile import ZipFile
-csv.field_size_limit(2147483647) # Increase CSV reader's field limit incase we have long text.
 
-# based on
+from pytorch_transformers.modeling_bert import BertPreTrainedModel
+from pytorch_transformers import BertModel
+
+from joint_img_txt.model.convert_examples_to_features import convert_examples_to_features_multilabel
+from joint_img_txt.model.convert_examples_to_features import convert_examples_to_features
+
+csv.field_size_limit(2147483647) 
+# Increase CSV reader's field limit incase we have long text.
+
+
+# adapted from
 # https://towardsdatascience.com/https-medium-com-chaturangarajapakshe-text-classification-with-transformer-models-d370944b50ca
 def load_and_cache_examples(args, tokenizer):
     logger = logging.getLogger(__name__)
@@ -666,10 +671,8 @@ class ImageCache:
 
 '''
 Below are all the model utils for multiclass classification or for text model only
-All of them are not being used for now (Do we still need them? @Geeticka)
-We need EdemaClassificationProcessor; Let's keep the others for now for reference, but will delete later
+All of them are not being used for now
 '''
-
 
 
 class EdemaClassificationProcessor(DataProcessor):
@@ -706,8 +709,6 @@ class EdemaClassificationProcessor(DataProcessor):
             examples.append(
                 InputExample(report_id=report_id, guid=guid, text_a=text_a, text_b=None, labels=labels))
         return examples
-
-
 
 # return the difference between the top 2 elements in a list
 # look here

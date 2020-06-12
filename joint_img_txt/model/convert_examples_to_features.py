@@ -1,8 +1,10 @@
 '''
-Taken from https://medium.com/swlh/a-simple-guide-on-using-bert-for-text-classification-bbf041ac8d04
+Authors: Geeticka Chauhan, Ruizhi Liao
+This script contains functions for processing raw text.
+Adapted from 
+https://medium.com/swlh/a-simple-guide-on-using-bert-for-text-classification-bbf041ac8d04
 '''
 from multiprocessing import Pool, cpu_count
-#from tqdm import tqdm_notebook as tqdm 
 from tqdm import tqdm as tqdm
 
 class InputFeatures(object):
@@ -31,9 +33,10 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
         else:
             tokens_b.pop()
 
-
-# convert examples to features
 def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer):
+    """
+    converts examples to features
+    """
     label_map = {label: i for i, label in enumerate(label_list)}
     label_map['-1'] = -1 # To handle '-1' label (i.e. unlabeled data)
     examples_for_processing = [(example, label_map, max_seq_length, tokenizer) for example in examples]
@@ -43,7 +46,9 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
     return features
 
 def convert_example_to_feature(example_row):
-    # return example_row
+    """ 
+    returns example_row
+    """
     example, label_map, max_seq_length, tokenizer = example_row
 
     #TODO: geeticka don't need to change the output mode
@@ -96,10 +101,10 @@ def convert_example_to_feature(example_row):
                          segment_ids=segment_ids,
                          label_id=label_id, 
                          report_id=example.report_id)
+
 '''
 Following are for the multi label case
 '''
-
 class InputFeaturesMultiLabel(object):
     """A single set of features of data."""
 
