@@ -102,9 +102,9 @@ def train(args, device, model, tokenizer):
     tr_loss, logging_loss = 0.0, 0.0
     last_epoch_loss = 0.0
     last_epoch_global_step = 0
-    logging_img_loss, logging_txt_loss, logging_img_txt_loss, logging_joint_loss = 0.0, 0.0, 0.0, 0.0
-    last_epoch_img_loss, last_epoch_txt_loss, last_epoch_img_txt_loss, last_epoch_joint_loss = 0.0, 0.0, 0.0, 0.0
-    tr_img_loss, tr_txt_loss, tr_img_txt_loss, tr_joint_loss = 0.0, 0.0, 0.0, 0.0
+    logging_img_loss, logging_txt_loss, logging_joint_loss = 0.0, 0.0, 0.0
+    last_epoch_img_loss, last_epoch_txt_loss, last_epoch_joint_loss = 0.0, 0.0, 0.0
+    tr_img_loss, tr_txt_loss, tr_joint_loss = 0.0, 0.0, 0.0
     # https://discuss.pytorch.org/t/why-do-we-need-to-set-the-gradients-manually-to-zero-in-pytorch/4903/7
     # to check the purpose of zero-ing out the gradients between minibatches
     train_iterator = trange(int(args.num_train_epochs), desc="Epoch")
@@ -115,7 +115,7 @@ def train(args, device, model, tokenizer):
         for step, batch in enumerate(epoch_iterator):
             batch = tuple(t.to(device=device, non_blocking=True) for t in batch)
             image, label_raw, txt_ids, txt_mask, txt_segment_ids, \
-            label_onehot_or_ordinal, report_id = batch
+                label_onehot_or_ordinal, report_id = batch
             # label_raw is always 0-3 and 
             # label_onehot_or_ordinal is one-hot or ordinal 
             # depending on if it's multiclass or multilabel
@@ -135,10 +135,13 @@ def train(args, device, model, tokenizer):
             img_embedding, img_logits, txt_embedding, txt_logits = outputs[:4]
             # Model outputs are always tuple in pytorch-transformers (see doc)
 
+            '''
+            Adjust the cross entropy loss function for different label encoding options
+            '''
             if args.output_channel_encoding == 'multilabel' and \
                     args.training_mode != 'semisupervised_phase1':
-                # Replace the image label with the ordinally encoded label
                 label_ordinal = label_onehot_or_ordinal
+                # Replace the image label with the ordinally encoded label
 
                 BCE_loss_criterion = BCEWithLogitsLoss()
                 img_loss = BCE_loss_criterion(img_logits.view(-1, num_labels), 
@@ -148,6 +151,7 @@ def train(args, device, model, tokenizer):
             elif args.output_channel_encoding == 'multiclass' and \
                     args.training_mode != 'semisupervised_phase1':
                 label = label_raw
+
                 CrossEntropyCriterion = CrossEntropyLoss() 
                 # In this case, softmax is added in the model 
                 # and the CrossEntropyCriterion only accepts raw labels 0-3
@@ -156,54 +160,32 @@ def train(args, device, model, tokenizer):
                 txt_loss = CrossEntropyCriterion(txt_logits.view(-1, num_labels),
                                                  label.view(-1).long())
 
-            if args.use_imputed_labels:
-                if args.output_channel_encoding == 'multilabel':
-                    softmax = Softmax(dim=-1)
-                    txt_probs = softmax(txt_logits)
-                    BCE_loss_criterion = BCEWithLogitsLoss()
-                    img_txt_loss = BCE_loss_criterion(img_logits.view(-1, num_labels),
-                                                      txt_probs.view(-1, num_labels))
-                elif args.output_channel_encoding == 'multiclass':
-                    logSoftmax = LogSoftmax(dim=-1)
-                    log_img_probs = logSoftmax(img_logits)
-                    softmax = Softmax(dim=-1)
-                    txt_probs = softmax(txt_logits)
-                    img_txt_loss = custom_loss.dot_product_loss(log_img_probs,
-                                                                txt_probs)
-
+            '''
+            Define joint loss
+            '''
             if args.joint_loss_method == 'l2':
                 joint_loss_criterion = torch.nn.MSELoss()
                 joint_loss = joint_loss_criterion(img_embedding, txt_embedding)
             elif args.joint_loss_method == 'cosine':
                 joint_loss_criterion = torch.nn.CosineEmbeddingLoss()
                 y = torch.ones(img_embedding.shape[0], device=device) 
-                # for each row in the batch make sure they are similar
                 y.requires_grad = False
-                joint_loss = joint_loss_criterion(img_embedding, txt_embedding, y) 
-                # cosine loss needs to specify
-                # whether looking for similarity between the tensors or not
-            elif args.joint_loss_method == 'ranking':
-                joint_loss = custom_loss.ranking_loss(img_embedding,
-                                                      txt_embedding,
-                                                      label_raw,
-                                                      report_id,
-                                                      similarity_function=args.joint_loss_similarity_function)
+                joint_loss = joint_loss_criterion(x1=img_embedding, x2=txt_embedding, y=y) 
+                # y is ones so the joint loss is the negative inverse of cosine
             elif args.joint_loss_method == 'dot':
                 joint_loss = custom_loss.dot_product_loss(img_embedding,
                                                           txt_embedding)
+            elif args.joint_loss_method == 'ranking':
+                joint_loss = custom_loss.ranking_loss(
+                    img_embedding, txt_embedding, label_raw, report_id,
+                    similarity_function=args.joint_loss_similarity_function)
+
+            # -- Ray stopped here -- 6/15 6pm
 
             if args.training_mode == 'supervised' or args.training_mode == 'semisupervised_phase2':
-                if args.use_imputed_labels:
-                    loss = img_loss+txt_loss+joint_loss+img_txt_loss
-                else:
-                    loss = img_loss+txt_loss+joint_loss
-                    img_txt_loss = joint_loss
+                loss = img_loss+txt_loss+joint_loss
             if args.training_mode == 'semisupervised_phase1':
-                if args.use_imputed_labels:
-                    loss = joint_loss+img_txt_loss
-                else:
-                    loss = joint_loss
-                    img_txt_loss = joint_loss
+                loss = joint_loss
                 img_loss = joint_loss
                 txt_loss = joint_loss
 
@@ -220,13 +202,11 @@ def train(args, device, model, tokenizer):
             tr_epoch_loss += loss.item()
             tr_img_loss += img_loss.item()
             tr_txt_loss += txt_loss.item()
-            tr_img_txt_loss += img_txt_loss.item()
             tr_joint_loss += joint_loss.item() # TODO: convert loss to a tensor
             if epoch == args.num_train_epochs - 1:
                 last_epoch_loss += loss.item()
                 last_epoch_img_loss += img_loss.item()
                 last_epoch_txt_loss += txt_loss.item()
-                last_epoch_img_txt_loss += img_txt_loss.item()
                 last_epoch_joint_loss += joint_loss.item() # TODO: convert loss to a tensor
             if (step + 1) % args.gradient_accumulation_steps == 0:
                 optimizer.step()
@@ -273,13 +253,9 @@ def train(args, device, model, tokenizer):
                     logger.info("  [%d, %5d, %5d] text loss = %.5f"%\
                         (epoch + 1, step + 1, global_step, 
                          (tr_txt_loss - logging_txt_loss)/args.logging_steps))
-                    logger.info("  [%d, %5d, %5d] image_text loss = %.5f"%\
-                        (epoch + 1, step + 1, global_step, 
-                         (tr_img_txt_loss - logging_img_txt_loss)/args.logging_steps))
                     logging_loss = tr_loss
                     logging_img_loss = tr_img_loss
                     logging_txt_loss = tr_txt_loss
-                    logging_img_txt_loss = tr_img_txt_loss
                     logging_joint_loss = tr_joint_loss
         if args.scheduler == 'ReduceLROnPlateau':
             scheduler.step(tr_epoch_loss)
@@ -302,7 +278,6 @@ def train(args, device, model, tokenizer):
             'last_epoch_training_loss': last_epoch_loss / last_epoch_global_step,
             'last_epoch_img_loss': last_epoch_img_loss / last_epoch_global_step,
             'last_epoch_txt_loss': last_epoch_txt_loss / last_epoch_global_step,
-            'last_epoch_img_txt_loss': last_epoch_img_txt_loss / last_epoch_global_step,
             'last_epoch_joint_loss': last_epoch_joint_loss / last_epoch_global_step}
 
 

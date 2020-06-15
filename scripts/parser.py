@@ -108,8 +108,6 @@ parser.add_argument('--use_all_data', default=False, action='store_true',
         help='whether to use all the data for training or evaluation')
 parser.add_argument('--use_pretrained_checkpoint', default=False, action='store_true',
         help='whether to use a pretrained checkpoint for initializing model parameters')
-parser.add_argument('--use_imputed_labels', default=False, action='store_true',
-        help='whether to use labels imputed from text(reports) for image model training')
 parser.add_argument('--print_predictions', default=False, action='store_true',
         help='whether to print predictions of each evaluation data point for image model evaluation')
 parser.add_argument('--print_embeddings', default=False, action='store_true',
