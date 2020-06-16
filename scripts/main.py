@@ -230,6 +230,8 @@ def main():
     logging.basicConfig(filename=log_file, level=logging.INFO, filemode='w', 
                         format='%(asctime)s - %(name)s %(message)s', 
                         datefmt='%m-%d %H:%M')
+    logger = logging.getLogger(__name__)
+    logger.info("Current git commit sha: %s", sha)
 
     '''
     Set text tokenizer 
