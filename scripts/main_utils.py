@@ -161,7 +161,7 @@ def train(args, device, model, tokenizer):
                                                  label.view(-1).long())
 
             '''
-            Define joint loss
+            Define loss functions
             '''
             if args.joint_loss_method == 'l2':
                 joint_loss_criterion = torch.nn.MSELoss()
@@ -180,16 +180,16 @@ def train(args, device, model, tokenizer):
                     img_embedding, txt_embedding, label_raw, report_id,
                     similarity_function=args.joint_loss_similarity_function)
 
-            # -- Ray stopped here -- 6/15 6pm
-
-            if args.training_mode == 'supervised' or args.training_mode == 'semisupervised_phase2':
+            if args.training_mode == 'supervised' or \
+                    args.training_mode == 'semisupervised_phase2':
                 loss = img_loss+txt_loss+joint_loss
             if args.training_mode == 'semisupervised_phase1':
                 loss = joint_loss
                 img_loss = joint_loss
                 txt_loss = joint_loss
+                # img_loss and txt_loss will not be computed and optimized 
+                # in the training mode of semisupervised_phase1
 
-            print("\r%f" % loss, end='')
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
             loss.backward()
@@ -198,29 +198,31 @@ def train(args, device, model, tokenizer):
                 torch.nn.utils.clip_grad_norm_(optimizer_grouped_parameters, 
                                                args.max_grad_norm)
 
+            '''
+            Run optimizer and log loss terms during training
+            '''
             tr_loss += loss.item()
             tr_epoch_loss += loss.item()
             tr_img_loss += img_loss.item()
             tr_txt_loss += txt_loss.item()
-            tr_joint_loss += joint_loss.item() # TODO: convert loss to a tensor
+            tr_joint_loss += joint_loss.item()
             if epoch == args.num_train_epochs - 1:
                 last_epoch_loss += loss.item()
                 last_epoch_img_loss += img_loss.item()
                 last_epoch_txt_loss += txt_loss.item()
-                last_epoch_joint_loss += joint_loss.item() # TODO: convert loss to a tensor
+                last_epoch_joint_loss += joint_loss.item()
             if (step + 1) % args.gradient_accumulation_steps == 0:
                 optimizer.step()
                 # important: Pytorch 0.1 and above needs optimizer step to happen before
                 # see https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
                 # and notice this open bug with LR scheduler https://github.com/pytorch/pytorch/issues/22107
                 if args.scheduler == 'WarmupLinearSchedule':
-                    scheduler.step()  # Update learning rate schedule
-                optimizer.zero_grad() # optimizer has more parameters than my model, so I will follow this
+                    scheduler.step()  # Update learning rate scheduler
+                optimizer.zero_grad()
                 global_step += 1
                 if epoch == args.num_train_epochs -1:
                     last_epoch_global_step += 1
                 if args.logging_steps > 0 and global_step % args.logging_steps == 0:
-                    # Log metrics
                     tb_writer.add_scalar('learning_rate', 
                                          optimizer.param_groups[0]['lr'], 
                                          global_step)
@@ -236,36 +238,37 @@ def train(args, device, model, tokenizer):
                     tb_writer.add_scalar('loss_joint/train', 
                                          (tr_joint_loss - logging_joint_loss)/args.logging_steps, 
                                          global_step)
-                    image_grid = torchvision.utils.make_grid(image)
-                    tb_writer.add_image('input_images', image_grid, global_step)
                     logger.info("  [%d, %5d, %5d] learning rate = %.7f"%\
                         (epoch + 1, step + 1, global_step,
-                         optimizer.param_groups[0]['lr']))
+                        optimizer.param_groups[0]['lr']))
                     logger.info("  [%d, %5d, %5d] loss = %.5f"%\
-                        (epoch + 1, step + 1, global_step, 
-                         (tr_loss - logging_loss)/args.logging_steps))
+                        (epoch + 1, step + 1, global_step,
+                        (tr_loss - logging_loss)/args.logging_steps))
                     logger.info("  [%d, %5d, %5d] joint loss = %.5f"%\
-                        (epoch + 1, step + 1, global_step, 
-                         (tr_joint_loss - logging_joint_loss)/args.logging_steps))
+                        (epoch + 1, step + 1, global_step,
+                        (tr_joint_loss - logging_joint_loss)/args.logging_steps))
                     logger.info("  [%d, %5d, %5d] image loss = %.5f"%\
-                        (epoch + 1, step + 1, global_step, 
-                         (tr_img_loss - logging_img_loss)/args.logging_steps))
+                        (epoch + 1, step + 1, global_step,
+                        (tr_img_loss - logging_img_loss)/args.logging_steps))
                     logger.info("  [%d, %5d, %5d] text loss = %.5f"%\
                         (epoch + 1, step + 1, global_step, 
-                         (tr_txt_loss - logging_txt_loss)/args.logging_steps))
+                        (tr_txt_loss - logging_txt_loss)/args.logging_steps))
                     logging_loss = tr_loss
                     logging_img_loss = tr_img_loss
                     logging_txt_loss = tr_txt_loss
                     logging_joint_loss = tr_joint_loss
         if args.scheduler == 'ReduceLROnPlateau':
-            scheduler.step(tr_epoch_loss)
+            scheduler.step(tr_epoch_loss) # Update learning rate scheduler
 
+        '''
+        Save model checkpoint
+        '''
         if args.save_epochs > 0 and (epoch + 1) % args.save_epochs == 0:
-            # Save model checkpoint
             output_dir = os.path.join(args.checkpoints_dir, 'checkpoint-{}'.format(epoch+1))
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
-            model_to_save = model.module if hasattr(model, 'module') else model  # Take care of distributed/parallel training
+            model_to_save = model.module if hasattr(model, 'module') else model  
+            # Take care of distributed/parallel training
             model_to_save.save_pretrained(output_dir)
 
         logger.info("  Epoch %d loss = %.5f" % (epoch + 1, tr_epoch_loss))
