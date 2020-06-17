@@ -127,7 +127,6 @@ def train(args, device, model, tokenizer):
                         'attention_mask':           txt_mask,
                         'token_type_ids':           txt_segment_ids,
                         'labels':                   None,
-                        'same_classifier':          args.share_img_txt_classifier,
                         'bert_pool_last_hidden':    args.bert_pool_last_hidden,
                         'bert_pool_use_img':        args.bert_pool_use_img,
                         'bert_pool_img_lowerlevel': args.bert_pool_img_lowerlevel} 

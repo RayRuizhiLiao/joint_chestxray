@@ -90,8 +90,6 @@ parser.add_argument('--training_mode', default='supervised',
              'If semisupervised_phase2, the joint model will load from pretrained_model_checkpoint before training.')
 parser.add_argument('--semisupervised_training_data', default='allCHF',
         help='whether to use allCXR or allCHF for semisupervised training.')
-parser.add_argument('--share_img_txt_classifier', default=False, action='store_true',
-        help='whether to share the classifier for the image and text model')
 parser.add_argument('--bert_pool_last_hidden', default=False, action='store_true',
         help='whether to pool the full sequence of the last layer hidden states in bert model')
 parser.add_argument('--bert_pool_use_img', default=False, action='store_true',
