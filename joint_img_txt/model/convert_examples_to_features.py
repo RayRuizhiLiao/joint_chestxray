@@ -1,5 +1,6 @@
 '''
 Authors: Geeticka Chauhan, Ruizhi Liao
+
 This script contains functions for processing raw text.
 Adapted from 
 https://medium.com/swlh/a-simple-guide-on-using-bert-for-text-classification-bbf041ac8d04

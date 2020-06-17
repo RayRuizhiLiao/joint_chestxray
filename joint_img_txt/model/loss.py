@@ -1,5 +1,6 @@
 '''
 Authors: Geeticka Chauhan, Ruizhi Liao
+
 Custom loss functions for the joint model
 '''
 import random

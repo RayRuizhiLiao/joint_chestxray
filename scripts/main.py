@@ -1,5 +1,6 @@
 '''
 Authors: Geeticka Chauhan, Ruizhi Liao
+
 Main script to run training and evaluation of the image-text joint model
 for estimating the severity of pulmonary edema on MIMIC-CXR
 '''

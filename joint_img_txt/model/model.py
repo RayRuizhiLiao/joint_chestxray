@@ -1,5 +1,6 @@
 '''
 Authors: Geeticka Chauhan, Ruizhi Liao
+
 This script contains the image-text joint model
 that encodes image and text features in a joint embedding space.
 Two classifiers with the same network architecture perform classification
@@ -28,6 +29,9 @@ def conv1x1(in_planes, out_planes, stride=1):
 
 
 class BasicBlock(nn.Module):
+    """
+    A wrapup of a residual block
+    """
     expansion = 1
     __constants__ = ['downsample']
 
@@ -69,6 +73,9 @@ class BasicBlock(nn.Module):
 
 
 class ImageResNet(nn.Module):
+    """
+    The image embedder that is implemented as a residual network 
+    """
 
     def __init__(self, block, layers, output_channels=3, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
@@ -93,7 +100,7 @@ class ImageResNet(nn.Module):
                                bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
-        #self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        # self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 8, layers[0], stride=2)
         self.layer2 = self._make_layer(block, 16, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 32, layers[2], stride=2)
@@ -103,10 +110,10 @@ class ImageResNet(nn.Module):
         self.layer7 = self._make_layer(block, 192, layers[6], stride=2)
         self.avgpool = nn.AvgPool2d((2, 2))
         self.fc1 = nn.Linear(768, output_channels)
-        #self.fc1 = nn.Linear(768, 24)
-        #self.bn2 = nn.BatchNorm1d(24)
-        #self.fc2 = nn.Linear(24, output_channels)
-        
+        # self.fc1 = nn.Linear(768, 24)
+        # self.bn2 = nn.BatchNorm1d(24)
+        # self.fc2 = nn.Linear(24, output_channels)
+
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -115,7 +122,8 @@ class ImageResNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
         # Zero-initialize the last BN in each residual branch,
-        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # so that the residual branch starts with zeros, 
+        # and each residual block behaves like an identity.
         # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
         if zero_init_residual:
             for m in self.modules():
@@ -124,7 +132,7 @@ class ImageResNet(nn.Module):
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
 
-    def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
+    def _make_layer(self, block, planes, num_blocks, stride=1, dilate=False):
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -141,38 +149,37 @@ class ImageResNet(nn.Module):
         layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
                             self.base_width, previous_dilation, norm_layer))
         self.inplanes = planes * block.expansion
-        for _ in range(1, blocks):
+        for _ in range(1, num_blocks):
             layers.append(block(self.inplanes, planes, groups=self.groups,
                                 base_width=self.base_width, dilation=self.dilation,
                                 norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
 
-    def forward(self, x, same_classifier=False, use_lowerlevel_features=False):
+    def forward(self, x, use_lowerlevel_features=False):
         x = self.conv1(x)
         x = self.bn1(x)
-        x = self.relu(x) # 8, 8, 512, 512
-        #x = self.maxpool(x)
+        x = self.relu(x) # batch_size, 8, 512, 512
+        # x = self.maxpool(x)
 
-        x = self.layer1(x) # 8, 8, 256, 256
-        x = self.layer2(x) # 8, 16, 128, 128
-        x = self.layer3(x) # 8, 32, 64, 64
-        x = self.layer4(x) # 8, 64, 32, 32
-        x = self.layer5(x) # 8, 128, 16, 16
-        x = self.layer6(x) # 8, 192, 8, 8
+        x = self.layer1(x) # batch_size, 8, 256, 256
+        x = self.layer2(x) # batch_size, 16, 128, 128
+        x = self.layer3(x) # batch_size, 32, 64, 64
+        x = self.layer4(x) # batch_size, 64, 32, 32
+        x = self.layer5(x) # batch_size, 128, 16, 16
+        x = self.layer6(x) # batch_size, 192, 8, 8
         lowerlevel_img_feat = x 
-        x = self.layer7(x) # 8, 192, 4, 4
+        x = self.layer7(x) # batch_size, 192, 4, 4
         
         x = self.avgpool(x)
-        z = torch.flatten(x, 1) # 8, 768
-        #x = self.fc1(z)
-        #x = self.bn2(x)
-        #x = self.relu(x)
-        #y = self.fc2(x)
+        z = torch.flatten(x, 1) # batch_size, 768
+        # x = self.fc1(z)
+        # x = self.bn2(x)
+        # x = self.relu(x)
+        # y = self.fc2(x)
         outputs = (z,)
-        if not same_classifier:
-            logits = self.fc1(z)
-            outputs += (logits,)
+        logits = self.fc1(z)
+        outputs += (logits,)
         if use_lowerlevel_features:
             outputs += (lowerlevel_img_feat,)
         return outputs # z, (logits), (layer6 output)
@@ -182,9 +189,7 @@ class ImageResNet(nn.Module):
 # https://medium.com/huggingface/multi-label-text-classification-using-bert-the-mighty-transformer-69714fa3fb3d
 class TextBertForSequenceClassification(BertPreTrainedModel):
     """
-    BERT model for multilabel/multiclass classification. Here we will treat the problem with 
-    ordinal encoding. Note: because we are doing ordinal encoding, num_labels is actually 3 
-    and not 4. So make sure to feed num_labels - 1 to this one. 
+    The text embedder that is implemented as a BERT model
     """
     def __init__(self, config):
         super(TextBertForSequenceClassification, self).__init__(config)
@@ -198,7 +203,7 @@ class TextBertForSequenceClassification(BertPreTrainedModel):
         self.apply(self.init_weights)
 
     def forward(self, input_ids, token_type_ids=None, attention_mask=None, labels=None,
-                position_ids=None, head_mask=None, same_classifier=False, use_all_sequence=False,
+                position_ids=None, head_mask=None, use_all_sequence=False,
                 img_embedding=None, output_img_txt_attn=False):
         outputs = self.bert(input_ids, position_ids=position_ids, token_type_ids=token_type_ids,
                             attention_mask=attention_mask, head_mask=head_mask)
@@ -224,12 +229,12 @@ class TextBertForSequenceClassification(BertPreTrainedModel):
 
         pooled_output = self.dropout(pooled_output)
         
-        if same_classifier:
-            outputs = (pooled_output,) + outputs[2:]
-        else:
-            logits = self.classifier(pooled_output)
-            outputs = (pooled_output, logits,) + outputs[2:]
-            # add hidden states and attention if they are here
+        # if same_classifier:
+        #     outputs = (pooled_output,) + outputs[2:]
+        # else:
+        logits = self.classifier(pooled_output)
+        outputs = (pooled_output, logits,) + outputs[2:]
+        # add hidden states and attention if they are here
         if use_all_sequence and output_img_txt_attn:
             outputs = outputs + (img_txt_attn,)
         return outputs  # pooled_output, (logits), (hidden_states), (txt_attentions), (img_txt_attn)
@@ -354,10 +359,12 @@ class TextBertAttentionPooler(nn.Module):
 
 class ImageTextModel(nn.Module):
     """
-    BERT model for multi label classification. Here we will treat the problem with 
-    ordinal encoding. Note: because we are doing ordinal encoding, num_labels is actually 3 
-    and not 4. So make sure to feed num_labels - 1 to this one. 
+    The joint image-text model that comprises an image embedder, a text embedder,
+    and two classifiers that take image embedding and text embedding as input respectively.
+    The two classifiers have the same network architecture.
+    Note that the image classifier is implemented as part of ImageResNet.
     """
+
     def __init__(self, config, pretrained_bert_dir=None, block=BasicBlock, 
                  layers=[2, 2, 2, 2, 2, 2, 2], zero_init_residual=False, groups=1, 
                  width_per_group=64, replace_stride_with_dilation=None, norm_layer=None):
@@ -373,13 +380,12 @@ class ImageTextModel(nn.Module):
         self.img_model = ImageResNet(block=block, 
                                      layers=layers, 
                                      output_channels=config.num_labels, 
-                                     # image and text model should have same number of channels
+                                     # image and text model should have the same number of channels
                                      zero_init_residual=zero_init_residual, 
                                      groups=groups, 
                                      width_per_group=width_per_group, 
                                      replace_stride_with_dilation=replace_stride_with_dilation,
                                      norm_layer=norm_layer)
-
 
         self.config = config 
         # Bert will throw an error if config is not in the right format
@@ -387,47 +393,40 @@ class ImageTextModel(nn.Module):
         self.classifier = nn.Linear(self.config.hidden_size, self.config.num_labels)
 
     def forward(self, input_img, input_ids, token_type_ids=None, attention_mask=None, 
-                labels=None, position_ids=None, head_mask=None, same_classifier=False,
+                labels=None, position_ids=None, head_mask=None,
                 bert_pool_last_hidden=False, bert_pool_use_img=False, 
                 bert_pool_img_lowerlevel=False, output_img_txt_attn=False):
-        '''
-        We will get the output of the image model first to get the image embedding
-        '''
-        outputs_img = self.img_model.forward(input_img, same_classifier, 
-                bert_pool_last_hidden and bert_pool_use_img and bert_pool_img_lowerlevel)
-        z_img = outputs_img[0] # 8, 768
-        if same_classifier:
-            logits_img = self.classifier(z_img)
-        else:
-            logits_img = outputs_img[1]
-        if bert_pool_last_hidden and bert_pool_use_img and bert_pool_img_lowerlevel:
-            lowerlevel_img_feat = outputs_img[2] # 8, 192, 8, 8
 
-        ''' 
-        Next let's feed the image model output to the text model
-        '''
+        outputs_img = self.img_model.forward(input_img, 
+                bert_pool_last_hidden and bert_pool_use_img and bert_pool_img_lowerlevel)
+        z_img = outputs_img[0] # batch_size, 768
+        logits_img = outputs_img[1]
+
+        if bert_pool_last_hidden and bert_pool_use_img and bert_pool_img_lowerlevel:
+            lowerlevel_img_feat = outputs_img[2] # batch_size, 192, 8, 8
+
         img_embedding = None
         if bert_pool_use_img and bert_pool_img_lowerlevel:
             img_embedding = lowerlevel_img_feat
         elif bert_pool_use_img and not bert_pool_img_lowerlevel:
             img_embedding = z_img
+        
         outputs_txt = self.text_model.forward(input_ids=input_ids,
                                               token_type_ids=token_type_ids,
                                               attention_mask=attention_mask,
                                               labels=labels,
                                               position_ids=position_ids,
                                               head_mask=head_mask, 
-                                              same_classifier=same_classifier,
                                               use_all_sequence=bert_pool_last_hidden,
                                               img_embedding= img_embedding, 
                                               output_img_txt_attn=output_img_txt_attn)
 
         z_txt = outputs_txt[0]
-        if same_classifier:
-            #fill in
-            logits_txt = self.classifier(z_txt)
-        else:
-            logits_txt = outputs_txt[1]
+        # if same_classifier:
+        #     #fill in
+        #     logits_txt = self.classifier(z_txt)
+        # else:
+        logits_txt = outputs_txt[1]
 
         outputs = (z_img, logits_img, z_txt, logits_txt)
         if self.config.output_attentions and output_img_txt_attn:
@@ -437,7 +436,8 @@ class ImageTextModel(nn.Module):
 
         return outputs # z_img, logits_img, z_txt, logits_txt, (txt_attn), (img_txt_attn)
     
-    # based on https://github.com/huggingface/transformers/blob/v1.0.0/pytorch_transformers/modeling_utils.py
+    # based on 
+    # https://github.com/huggingface/transformers/blob/v1.0.0/pytorch_transformers/modeling_utils.py
     def save_pretrained(self, save_directory): # taken from huggingface, pretrained transformers
         """ 
         Save a model with its configuration file to a directory, so that it
@@ -457,7 +457,8 @@ class ImageTextModel(nn.Module):
 
         torch.save(model_to_save.state_dict(), output_model_file)
     
-    # based on https://github.com/huggingface/transformers/blob/v1.0.0/pytorch_transformers/modeling_utils.py
+    # based on 
+    # https://github.com/huggingface/transformers/blob/v1.0.0/pytorch_transformers/modeling_utils.py
     @classmethod
     def from_pretrained(cls, pretrained_model_path, *inputs, **kwargs):
         config = kwargs.pop('config', None)
