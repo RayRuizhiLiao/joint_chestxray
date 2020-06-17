@@ -136,10 +136,8 @@ def main():
          args.text_data_dir = os.path.join(args.text_data_dir, 'masked')
     args.text_data_dir = os.path.join(args.text_data_dir, args.output_channel_encoding)
 
-    if args.share_img_txt_classifier:
-        args.model = 'model_same_classifier'
-    else:
-        args.model = 'model'
+    args.model = 'model'
+    # TODO: consider deleting this
 
     if args.training_mode == 'supervised' or args.training_mode == 'supervised_masking':
         args.text_data_dir = os.path.join(args.text_data_dir, 'supervised', 'full')
@@ -203,7 +201,6 @@ def main():
     print('Scheduler used: ', args.scheduler)
     print('Initial learning Rate: ', args.learning_rate)
     print('Number of training epochs: ', args.num_train_epochs)
-    print('Sharing the image and text classifier: ', args.share_img_txt_classifier)
     print('Text data directory: ', args.text_data_dir)
     if 'semisupervised' in args.training_mode:
         print('Training data for semisupervised learning: ', args.semisupervised_training_data)
