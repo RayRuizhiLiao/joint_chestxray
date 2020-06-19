@@ -35,14 +35,16 @@ def imposter_img_loss(z_image, z_text, y, report_id, similarity_function):
         if similarity_function == 'dot':
             paired_similarity = torch.dot(z_image[i], z_text[i])
         if similarity_function == 'cosine':
-            paired_similarity = torch.dot(z_image[i], z_text[i])/(torch.norm(z_image[i])*torch.norm(z_text[i]))
+            paired_similarity = \
+                torch.dot(z_image[i], z_text[i])/(torch.norm(z_image[i])*torch.norm(z_text[i]))
         if similarity_function == 'l2':
             paired_similarity = -1*torch.norm(z_image[i]-z_text[i])
 
-        # Select an image index and 
+        # Select an imposter image index and 
         # compute the maximum margin based on the image label difference
         j = i+1 if i < batch_size - 1 else 0
-        if report_id[i] == report_id[j]: # This means the imposter image comes from the same acquisition 
+        if report_id[i] == report_id[j]: 
+        # This means the imposter image comes from the same acquisition 
             margin = 0
         elif y[i].item() == -1 or y[j].item() == -1: # '-1' means unlabeled 
             margin = 0.5
@@ -52,7 +54,8 @@ def imposter_img_loss(z_image, z_text, y, report_id, similarity_function):
         if similarity_function == 'dot':
             imposter_similarity = torch.dot(z_image[j], z_text[i])
         if similarity_function == 'cosine':
-            imposter_similarity = torch.dot(z_image[j], z_text[i])/(torch.norm(z_image[j])*torch.norm(z_text[i]))
+            imposter_similarity = \
+                torch.dot(z_image[j], z_text[i])/(torch.norm(z_image[j])*torch.norm(z_text[i]))
         if similarity_function == 'l2':
             imposter_similarity = -1*torch.norm(z_image[j]-z_text[i])
 
@@ -76,14 +79,16 @@ def imposter_txt_loss(z_image, z_text, y, report_id, similarity_function):
         if similarity_function == 'dot':
             paired_similarity = torch.dot(z_image[i], z_text[i])
         if similarity_function == 'cosine':
-            paired_similarity = torch.dot(z_image[i], z_text[i])/(torch.norm(z_image[i])*torch.norm(z_text[i]))
+            paired_similarity = \
+                torch.dot(z_image[i], z_text[i])/(torch.norm(z_image[i])*torch.norm(z_text[i]))
         if similarity_function == 'l2':
             paired_similarity = -1*torch.norm(z_image[i]-z_text[i])
 
-        # Select a text index and 
+        # Select an imposter text index and 
         # compute the maximum margin based on the image label difference
         j = i+1 if i < batch_size - 1 else 0
-        if report_id[i] == report_id[j]: # This means the imposter report comes from the same acquisition 
+        if report_id[i] == report_id[j]: 
+            # This means the imposter report comes from the same acquisition 
             margin = 0
         elif y[i].item() == -1 or y[j].item() == -1: # '-1' means unlabeled
             margin = 0.5
@@ -93,7 +98,8 @@ def imposter_txt_loss(z_image, z_text, y, report_id, similarity_function):
         if similarity_function == 'dot':
             imposter_similarity = torch.dot(z_text[j], z_image[i])
         if similarity_function == 'cosine':
-            imposter_similarity = torch.dot(z_text[j], z_image[i])/(torch.norm(z_text[j])*torch.norm(z_image[i]))
+            imposter_similarity = \
+                torch.dot(z_text[j], z_image[i])/(torch.norm(z_text[j])*torch.norm(z_image[i]))
         if similarity_function == 'l2':
             imposter_similarity = -1*torch.norm(z_text[j]-z_image[i])
 
