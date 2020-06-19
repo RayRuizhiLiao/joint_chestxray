@@ -9,7 +9,7 @@ from multiprocessing import Pool, cpu_count
 from tqdm import tqdm as tqdm
 
 class InputFeatures(object):
-    """A single set of features of data."""
+    """A single set of features of text data."""
 
     def __init__(self, input_ids, input_mask, segment_ids, label_id, report_id):
         self.input_ids = input_ids
@@ -40,10 +40,13 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
     """
     label_map = {label: i for i, label in enumerate(label_list)}
     label_map['-1'] = -1 # To handle '-1' label (i.e. unlabeled data)
-    examples_for_processing = [(example, label_map, max_seq_length, tokenizer) for example in examples]
+    examples_for_processing = [(example, label_map, max_seq_length, tokenizer) \
+        for example in examples]
     process_count = cpu_count() - 1
     with Pool(process_count) as p:
-            features = list(tqdm(p.imap(convert_example_to_feature, examples_for_processing), total=len(examples)))
+            features = list(tqdm(p.imap(convert_example_to_feature, 
+                                 examples_for_processing), 
+                            total=len(examples)))
     return features
 
 def convert_example_to_feature(example_row):
@@ -103,11 +106,11 @@ def convert_example_to_feature(example_row):
                          label_id=label_id, 
                          report_id=example.report_id)
 
-'''
-Following are for the multi label case
-'''
+
 class InputFeaturesMultiLabel(object):
-    """A single set of features of data."""
+    """A single set of features of text data 
+    in the case of multilabel.
+    """
 
     def __init__(self, input_ids, input_mask, segment_ids, label_id, report_id):
         self.input_ids = input_ids
@@ -120,10 +123,13 @@ class InputFeaturesMultiLabel(object):
 def convert_examples_to_features_multilabel(examples, label_list, max_seq_length, tokenizer):
     label_map = {label: i for i, label in enumerate(label_list)}
     label_map['-'] = -1 # To handle '-1' label (i.e. unlabeled data)
-    examples_for_processing = [(example, label_map, max_seq_length, tokenizer) for example in examples]
+    examples_for_processing = [(example, label_map, max_seq_length, tokenizer) \
+        for example in examples]
     process_count = cpu_count() - 1
     with Pool(process_count) as p:
-            features = list(tqdm(p.imap(convert_example_to_feature_multilabel, examples_for_processing), total=len(examples)))
+            features = list(tqdm(p.imap(convert_example_to_feature_multilabel, 
+                                        examples_for_processing), 
+                            total=len(examples)))
     return features
 
 def convert_example_to_feature_multilabel(example_row):
@@ -172,8 +178,9 @@ def convert_example_to_feature_multilabel(example_row):
     if -1 in label_id:
         label_id = [-1, -1, -1]
 
-    return InputFeaturesMultiLabel(input_ids=input_ids,
-                         input_mask=input_mask,
-                         segment_ids=segment_ids,
-                         label_id=label_id, 
-                         report_id=example.report_id)
+    return InputFeaturesMultiLabel(
+        input_ids=input_ids,
+        input_mask=input_mask,
+        segment_ids=segment_ids,
+        label_id=label_id, 
+        report_id=example.report_id)
