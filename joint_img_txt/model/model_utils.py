@@ -38,16 +38,23 @@ csv.field_size_limit(2147483647)
 # https://towardsdatascience.com/https-medium-com-chaturangarajapakshe-text-classification-with-transformer-models-d370944b50ca
 def load_and_cache_examples(args, tokenizer):
     logger = logging.getLogger(__name__)
-    processor = EdemaMultiLabelClassificationProcessor() if args.output_channel_encoding == 'multilabel' \
-            else EdemaClassificationProcessor()
+
+    '''
+    Load text features if they have been pre-processed;
+    otherwise pre-process the raw text and save the features
+    '''
+    processor = EdemaMultiLabelClassificationProcessor() \
+        if args.output_channel_encoding == 'multilabel' \
+        else EdemaClassificationProcessor()
     num_labels = len(processor.get_labels())
+
     if args.output_channel_encoding == 'multilabel':
         get_features = convert_examples_to_features_multilabel
     else:
         get_features = convert_examples_to_features
-    mode = 'dev' if args.do_eval else 'train'
-    cached_features_file = os.path.join(args.text_data_dir,
-            f"cachedfeatures_train_seqlen-{args.max_seq_length}_{args.output_channel_encoding}")
+    cached_features_file = os.path.join(
+        args.text_data_dir,
+        f"cachedfeatures_train_seqlen-{args.max_seq_length}_{args.output_channel_encoding}")
     if os.path.exists(cached_features_file) and not args.reprocess_input_data:
         logger.info("Loading features from cached file %s", cached_features_file)
         print("Loading features from cached file %s"%cached_features_file)
@@ -60,16 +67,19 @@ def load_and_cache_examples(args, tokenizer):
         logger.info("Saving features into cached file %s", cached_features_file)
         print("Saving features into cached file %s"%cached_features_file)
         torch.save(features, cached_features_file)
+
     all_txt_tokens = {f.report_id: f.input_ids for f in features}
     all_txt_masks = {f.report_id: f.input_mask for f in features}
     all_txt_segments = {f.report_id: f.segment_ids for f in features}
     all_txt_labels = {f.report_id: f.label_id for f in features}
-   
+
+    '''
+    Split the data for training/evaluation
+    '''
     if args.data_split_mode == 'testing':
         use_test_data = True
     else:
         use_test_data = False
-
     train_img_labels, train_img_txt_ids, val_img_labels, val_img_txt_ids = \
         _split_tr_val(args.data_split_path, 
                       args.training_folds, 
@@ -84,6 +94,10 @@ def load_and_cache_examples(args, tokenizer):
         all_img_labels = train_img_labels
     print("Length of all image text ids", len(all_img_txt_ids))
 
+    '''
+    Specify the image set directory and 
+    pre-processing method depending on it's for training/evaluation
+    '''
     if args.use_png:
         args.img_data_dir = os.path.join(args.img_data_dir, 'png_16bit')
     else:
@@ -94,6 +108,9 @@ def load_and_cache_examples(args, tokenizer):
     if args.do_eval:
         xray_transform = CenterCrop(2048)
 
+    '''
+    Instantiate the image-text dataset
+    '''
     dataset = CXRImageTextDataset(args.img_localdisk_data_dir, args.id, 
                                   all_txt_tokens, all_txt_masks, all_txt_segments, 
                                   all_txt_labels, all_img_txt_ids, args.img_data_dir, 
@@ -158,8 +175,48 @@ class InputExample(object):
         self.report_id = report_id
 
 
-# Note the multilabel classification referred to the classification for ordinally encoded labels
-# In the Multilabel case, we will just write multiple labels as one string in the tsv file
+class EdemaClassificationProcessor(DataProcessor):
+    """Processor for multi class classification dataset. 
+    Assume reading from a multiclass file
+    so the label will be in 0-3 format
+    """
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
+    
+    def get_all_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_tsv(os.path.join(data_dir, "all_data.tsv")), "dev")
+
+    def get_labels(self):
+        """See base class."""
+        return ["0", "1", "2", "3"]
+    
+    def _create_examples(self, lines, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        for (i, line) in enumerate(lines):
+            guid = "%s-%s" % (set_type, i)
+            text_a = line[-1]
+            labels = line[1]
+            report_id = line[2]
+            examples.append(
+                InputExample(
+                    report_id=report_id, guid=guid, 
+                    text_a=text_a, text_b=None, labels=labels))
+        return examples
+
+
+# Note the multilabel classification refers to the classification for ordinally encoded labels
+# In the multilabel case, we will just write multiple labels as one string in the tsv file
 # So the actual DataProcessor between multi-class and multi-label classification will be the same
 class EdemaMultiLabelClassificationProcessor(DataProcessor):
     """Processor for multi label classification dataset."""
@@ -192,13 +249,16 @@ class EdemaMultiLabelClassificationProcessor(DataProcessor):
             labels = [ char for char in line[1]]
             report_id = line[2]
             examples.append(
-                InputExample(report_id=report_id, guid=guid, text_a=text_a, text_b=None, labels=labels))
+                InputExample(
+                    report_id=report_id, guid=guid, 
+                    text_a=text_a, text_b=None, labels=labels))
         return examples
 
 
-# Given a data split list (.csv), training folds and validation folds,
-# return DICOM IDs and the associated labels for training and validation
-def _split_tr_val(split_list_path, training_folds, validation_folds, use_test_data=False, use_all_data=False):
+# Given a data split list (.csv), training folds, validation folds, or test folds,
+# return DICOM IDs and the associated labels for training and evaluation
+def _split_tr_val(split_list_path, training_folds, validation_folds, 
+                  use_test_data=False, use_all_data=False):
     """Extracting finding labels
     """
 
@@ -214,7 +274,6 @@ def _split_tr_val(split_list_path, training_folds, validation_folds, use_test_da
     test_ids = []
     test_img_txt_ids = {}
 
-
     with open(split_list_path, 'r') as train_label_file:
         train_label_file_reader = csv.reader(train_label_file)
         row = next(train_label_file_reader)
@@ -225,11 +284,11 @@ def _split_tr_val(split_list_path, training_folds, validation_folds, use_test_da
                         train_labels[row[2]] = [float(row[3])]
                         train_ids.append(row[2])
                         train_img_txt_ids[row[2]] = row[1]
-                    if int(row[-1]) in validation_folds and not use_test_data:
+                    if int(row[-1]) in validation_folds:
                         val_labels[row[2]] = [float(row[3])]
                         val_ids.append(row[2])
                         val_img_txt_ids[row[2]] = row[1]
-                if row[-1] == 'TEST' and use_test_data:
+                if row[-1] == 'TEST':
                     test_labels[row[2]] = [float(row[3])]
                     test_ids.append(row[2])
                     test_img_txt_ids[row[2]] = row[1]
@@ -252,6 +311,8 @@ def _split_tr_val(split_list_path, training_folds, validation_folds, use_test_da
     if use_all_data:
         return train_labels, train_img_txt_ids, val_labels, val_img_txt_ids
 
+    # When use_test_data is True, test set will be returned for evaluation;
+    # Otherwise, validation set will be returned (likely for cross validation)
     if use_test_data:
         return train_labels, train_img_txt_ids, test_labels, test_img_txt_ids
     else:
@@ -259,7 +320,7 @@ def _split_tr_val(split_list_path, training_folds, validation_folds, use_test_da
 
 
 class RandomTranslateCrop(object):
-    """Translate, rotate and crop the image in a sample.
+    """Translate and crop the image in a sample.
 
     Args:
         output_size (tuple or int): Desired output size. 
@@ -280,7 +341,6 @@ class RandomTranslateCrop(object):
         self.rotation_std = rotation_std
 
     def __call__(self, image):
-
         image = self.__translate_2Dimage(image)
         #image = self.__rotate_2Dimage(image)
         h, w = image.shape[0:2]
@@ -356,7 +416,6 @@ class CenterCrop(object):
             self.output_size = output_size
 
     def __call__(self, image):
-
         image = self.__pad_2Dimage(image)
         h, w = image.shape[0:2]
         new_h, new_w = self.output_size
@@ -419,6 +478,7 @@ def convert_to_ordinal(severity):
     else:
         raise Exception("No other possibilities of ordinal labels are possible")
 
+
 class CXRImageTextDataset(Dataset):
     
     def __init__(self, img_localdisk_data_dir, model_id , all_txt_tokens, 
@@ -458,14 +518,6 @@ class CXRImageTextDataset(Dataset):
             local_images.extract_zip()
 
         print('Image directory: ', self.img_dir)
-        # if read_all_images:
-        #     for img_id in list(all_img_txt_ids.keys()):
-        #         img_path = os.path.join(img_dir, img_id+self.img_format)
-        #         image = load_image(img_path)
-        #         self.all_images[img_id] = image
-        #     eg_key = list(self.all_images.keys())[0]
-        #     item_size = sys.getsizeof(self.all_images[eg_key])
-        #     print('The image cache takes ', len(list(self.all_images.keys())) * item_size, ' bytes!')
 
     def __len__(self):
         return len(self.all_img_txt_ids)
@@ -475,11 +527,7 @@ class CXRImageTextDataset(Dataset):
             idx = idx.tolist()
 
         img_id = list(self.all_img_txt_ids.keys())[idx]
-        # if self.read_all_images:
-        #     image = self.all_images[img_id]
-        # else:
-        #     img_path = os.path.join(self.img_dir, img_id+self.img_format)
-        #     image = load_image(img_path)
+
         if self.cache_images:
             image = self.image_cache.get_item(img_id)
         else:
@@ -500,8 +548,8 @@ class CXRImageTextDataset(Dataset):
             txt_label = torch.tensor(self.all_txt_labels[txt_id], dtype=torch.long)
         elif self.output_channel_encoding == 'multiclass':
             txt_label = torch.tensor(convert_to_onehot(self.all_txt_labels[txt_id]), dtype=torch.long)
-        # note: txt_label is ordinal if multilabel otherwise one hot 
-        # and img_label ranges from 0 to 3
+        # txt_label is ordinal in the case of multilabel, otherwise one-hot.
+        # img_label ranges from 0 to 3 (not encoded yet)
 
         report_id = int(txt_id)
 
@@ -668,118 +716,3 @@ class ImageCache:
             self.cache_size -= max(remove_size, 0)
 
         return image
-
-
-'''
-Below are all the model utils for multiclass classification or for text model only
-All of them are not being used for now
-'''
-
-
-class EdemaClassificationProcessor(DataProcessor):
-    """Processor for multi class classification dataset. Assume reading from a multiclass file
-    so the label will be in 0-3 format"""
-
-    def get_train_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
-
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
-    
-    def get_all_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            self._read_tsv(os.path.join(data_dir, "all_data.tsv")), "dev")
-
-    def get_labels(self):
-        """See base class."""
-        return ["0", "1", "2", "3"]
-    
-    def _create_examples(self, lines, set_type):
-        """Creates examples for the training and dev sets."""
-        examples = []
-        for (i, line) in enumerate(lines):
-            guid = "%s-%s" % (set_type, i)
-            text_a = line[-1]
-            labels = line[1]
-            report_id = line[2]
-            examples.append(
-                InputExample(report_id=report_id, guid=guid, text_a=text_a, text_b=None, labels=labels))
-        return examples
-
-# return the difference between the top 2 elements in a list
-# look here
-# https://stackoverflow.com/questions/6910641/how-do-i-get-indices-of-n-maximum-values-in-a-numpy-array
-# for more information
-# returns the difference between the top 2 elements, and the indices 
-# of the top 4 elements sorted from lowest to highest
-def return_diff_top_2(nparray):
-    ind = np.argpartition(nparray, -4)[-4:]
-    #diff = abs(nparray[ind[0]] - nparray[ind[1]])
-    sorted_ind = ind[np.argsort(nparray[ind])]
-    diff = nparray - nparray[sorted_ind[-1]] # subtract by the last val which is highest
-    #diff = nparray[sorted_ind[3]] - nparray[sorted_ind[2]]
-    return diff, sorted_ind 
-
-# this heuristic computes the final prediction given the logits of all the labels
-# this heuristic should only be used for the edema severity prediction problem
-# can also specify a factor, to indicate whether you want to look within 1 stddev 
-# of the max or within some other factor of the stddev
-def decision_heuristic2(logits, factor=1):
-    sigmoid_probabilities = logistic.cdf(logits)
-    preds = []
-    for sigmoid_prob in sigmoid_probabilities:
-        stddev = np.std(sigmoid_prob)
-        diff, sorted_ind = return_diff_top_2(sigmoid_prob)
-        # below is just an optimization step: not needed for now as there 
-        # are such few examples
-        #if sorted_ind[-1] == 3: # if the largest probability is predicted for most severe label nothing todo
-        #    preds.append(3)
-        #    continue
-        # we will now get the indices that are within 1 stddev of the largest probability
-        indices_of_interest = np.where(abs(diff)<stddev*factor)
-        indices_of_interest = indices_of_interest[0]
-        most_severe_within_1stddev = max(indices_of_interest)
-        preds.append(most_severe_within_1stddev)
-    return np.asarray(preds)
-
-# Useful tutorial https://stanford.edu/~shervine/blog/pytorch-how-to-generate-data-parallel
-# Customizing dataset class for chest xray images
-class CXRTextDataset(Dataset):
-    # remember that below are called ids because they are ids into the embeddings dictionary
-    def __init__(self, all_txt_tokens, all_txt_masks, all_txt_segments, all_txt_labels):
-        """
-        Args:
-            csv_file (string): Path to the csv file with annotations.
-            root_dir (string): Directory with all the images.
-            transform (callable, optional): Optional transform to be applied
-            on a sample.
-        """
-        self.all_txt_tokens = all_txt_tokens 
-        self.all_txt_masks = all_txt_masks
-        self.all_txt_segments = all_txt_segments
-        self.all_txt_labels = all_txt_labels
-
-    def __len__(self):
-        return len(self.all_txt_tokens)
-
-    def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist() # this part is not quite clear; what happens if this is a list? expect int
-
-        def aslist(dictionary, idx):
-            return list(dictionary.keys())[idx]
-        
-        txt_id = aslist(self.all_txt_tokens, idx)
-        
-        txt_tokens = torch.tensor(self.all_txt_tokens[txt_id], dtype=torch.long)
-        txt_mask = torch.tensor(self.all_txt_masks[txt_id], dtype=torch.long)
-        txt_segments = torch.tensor(self.all_txt_segments[txt_id], dtype=torch.long)
-        txt_labels = torch.tensor(self.all_txt_labels[txt_id], dtype=torch.long)
-        # TODO: use all_report_ids to index into the input ids, mask to return index with particular id
-        sample = [txt_tokens, txt_mask, txt_segments, txt_labels]
-        return sample
