@@ -22,6 +22,8 @@ We have experimented this algorithm on [MIMIC-CXR](https://physionet.org/content
 
 ## Pulmonary edema severity
 
+We have demonstrated the application of this algorithm in pulmonary edema assessment. We aim to clssify a given chest x-ray image into one of the four ordinal levels: no edema (0), vascular congestion (1), interstitial edema (2), and alveolar edema (3).
+
 ## Regex and expert labeling
 
 # Contact
