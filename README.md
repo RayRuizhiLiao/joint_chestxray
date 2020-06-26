@@ -26,6 +26,8 @@ We have demonstrated the application of this algorithm in pulmonary edema assess
 
 ## Regex and expert labeling
 
+We use [regex](https://github.com/RayRuizhiLiao/regex_pulmonary_edema) to extract pulmonary edema severity labels from radiology reports for the model training. A board-certified radiologist and two domain experts reviewed 485 radiology reports (corrsponsding to 531 chest radiographs). We use the expert labels for our model testing.
+
 # Contact
 
 Geeticka Chauhan: geeticka [at] mit.edu <br />
