@@ -30,7 +30,7 @@ We use [regex](https://github.com/RayRuizhiLiao/regex_pulmonary_edema) to extrac
 
 ## Data split
 
-In our MICCAI 2020 work, we split the MIMIC-CXR data into training and test sets. There is no patient overlap between the training set and the test set. Our split can be found [here](https://github.com/RayRuizhiLiao/joint_chestxray/blob/master/metadata/mimic-cxr-sub-img-edema-split-allCXR.csv). The folds 1-6 are the training set and the fold "TEST" is the test set. We also used the training set for cross-validation when tuning our model hyper-parameters.
+In our MICCAI 2020 work, we split the MIMIC-CXR data into training and test sets. There is no patient overlap between the training set and the test set. Our data split can be found [here](https://github.com/RayRuizhiLiao/joint_chestxray/blob/master/metadata/mimic-cxr-sub-img-edema-split-allCXR.csv). The folds 1-6 are the training set and the fold "TEST" is the test set. We also used the training set for cross-validation when tuning our model hyper-parameters.
 
 # Contact
 
