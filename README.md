@@ -7,6 +7,10 @@ G. Chauhan<sup>\*</sup>, R. Liao<sup>\*</sup> et al. Joint Modeling of Chest Rad
 (<sup>\*</sup> indicates equal contribution)
 
 # Instructions
+1. Set up the conda environment using `conda_environment.yml.` You might want to remove the pip dependencies
+   if that is creating an issue for you. You can manually install the spacy and scispacy dependencies using
+     `pip install spacy` and `pip install scispacy.` Read `https://allenai.github.io/scispacy/` for more
+     information on scispacy. 
 
 ## Setup
 
