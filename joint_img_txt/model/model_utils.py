@@ -99,9 +99,9 @@ def load_and_cache_examples(args, tokenizer):
     pre-processing method depending on it's for training/evaluation
     '''
     if args.use_png:
-        args.img_data_dir = os.path.join(args.img_data_dir, 'png_16bit')
+        img_data_dir = os.path.join(args.img_data_dir, 'png_16bit')
     else:
-        args.img_data_dir = os.path.join(args.img_data_dir, 'npy')
+        img_data_dir = os.path.join(args.img_data_dir, 'npy')
 
     if args.do_train:
         xray_transform = RandomTranslateCrop(2048)
@@ -113,7 +113,7 @@ def load_and_cache_examples(args, tokenizer):
     '''
     dataset = CXRImageTextDataset(args.img_localdisk_data_dir, args.id, 
                                   all_txt_tokens, all_txt_masks, all_txt_segments, 
-                                  all_txt_labels, all_img_txt_ids, args.img_data_dir, 
+                                  all_txt_labels, all_img_txt_ids, img_data_dir, 
                                   all_img_labels, transform=xray_transform, 
                                   cache_images=args.cache_images,
                                   use_png=args.use_png,
