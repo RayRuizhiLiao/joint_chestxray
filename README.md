@@ -57,7 +57,7 @@ We have demonstrated the application of this algorithm in pulmonary edema assess
 
 ## Radiology report pre-processing
 
-We extract the *Impressions*, *Findings*, *Conclusion*, and *Recommendation* sections from the radiology reports. If none of these sections are present in the report, we use the *Final Report* section. We tokenize the text using [ScispaCy](https://allenai.github.io/scispacy/) before providing it to the BERT tokenizer.
+We extract the *Impressions*, *Findings*, *Conclusion*, and *Recommendation* sections from the radiology reports. If none of these sections are present in the report, we use the *Final Report* section. We tokenize the text using [ScispaCy](https://allenai.github.io/scispacy/) before providing it to the BERT model.
 
 ## Regex and expert labeling
 
