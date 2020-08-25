@@ -45,8 +45,6 @@ python ${repo_path}/scripts/main.py
 ```
 Note that in our [data split](https://github.com/RayRuizhiLiao/joint_chestxray/blob/master/example_data/data_split.csv), fold 6 is the unlabeled image-text pairs. 
 
-## Testing
-
 # Notes on Data and Labels
 
 ## MIMIC-CXR
