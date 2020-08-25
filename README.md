@@ -29,6 +29,21 @@ python ${repo_path}/scripts/main.py
 --training_mode 'semisupervised_phase1'
 ```
 
+Train the model in a supervised fashion:
+
+```
+python ${repo_path}/scripts/main.py
+--img_data_dir ${repo_path}/example_data/images/
+--text_data_dir ${repo_path}/example_data/text/
+--data_split_path ${repo_path}/example_data/data_split.csv
+--use_text_data_dir
+--use_data_split_path
+--output_dir ${output_path}
+--do_train
+--training_folds 1 2 3 4 5
+--training_mode 'supervised'
+```
+
 ## Testing
 
 # Notes on Data and Labels
