@@ -119,15 +119,16 @@ def main():
         data_split_file_postfix = '-allCXR'
 
 
-    if args.data_split_mode == 'testing' and args.do_eval:
-        args.data_split_path = os.path.join(args.data_split_path, 
-                                            'mimic-cxr-sub-img-edema-split-manualtest.csv')
-        # When evaluating in the testing mode, you should use the expert labels 
-        # that are included in the test set 
-    elif args.data_split_mode != 'use_path':
-        args.data_split_path = os.path.join(
-            args.data_split_path,
-            'mimic-cxr-sub-img-edema-split{}.csv'.format(data_split_file_postfix))
+    if not use_data_split_path:
+        if args.data_split_mode == 'testing' and args.do_eval:
+            args.data_split_path = os.path.join(args.data_split_path, 
+                                                'mimic-cxr-sub-img-edema-split-manualtest.csv')
+            # When evaluating in the testing mode, you should use the expert labels 
+            # that are included in the test set 
+        else:
+            args.data_split_path = os.path.join(
+                args.data_split_path,
+                'mimic-cxr-sub-img-edema-split{}.csv'.format(data_split_file_postfix))
 
     '''
     Set the output directory structure
