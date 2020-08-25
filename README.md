@@ -23,7 +23,7 @@ python ${repo_path}/scripts/main.py
 --data_split_path ${repo_path}/example_data/data_split.csv
 --use_text_data_dir
 --use_data_split_path
---output_dir=${output_path}
+--output_dir ${output_path}
 --do_train
 --training_folds 1 2 3 4 5 6
 --training_mode 'semisupervised_phase1'
