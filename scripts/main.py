@@ -136,7 +136,8 @@ def main():
     # TODO: revisit the code related to masked text (may want to delete it)
     if args.use_masked_txt:
          args.text_data_dir = os.path.join(args.text_data_dir, 'masked')
-    args.text_data_dir = os.path.join(args.text_data_dir, args.output_channel_encoding)
+    if not args.use_text_data_dir:
+        args.text_data_dir = os.path.join(args.text_data_dir, args.output_channel_encoding)
 
     args.model = 'model'
     # TODO: consider deleting this
