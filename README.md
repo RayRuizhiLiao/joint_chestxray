@@ -57,7 +57,7 @@ We have demonstrated the application of this algorithm in pulmonary edema assess
 
 ## Radiology report pre-processing
 
-We extract the *Impressions*, *Findings*, *Conclusion*, and *Recommendation* sections from the radiology reports. If none of these sections are present in the report, we use the *Final Report* section. We tokenize the text using [ScispaCy](https://allenai.github.io/scispacy/) before providing it to the BERT model. The data pre-processing code is [availabel](https://github.com/RayRuizhiLiao/joint_chestxray/tree/master/joint_img_txt/data_preprocessing). We're releasing the extracted report sections soon! 
+We extract the *Impressions*, *Findings*, *Conclusion*, and *Recommendation* sections from the radiology reports. If none of these sections are present in the report, we use the *Final Report* section. We tokenize the text using [ScispaCy](https://allenai.github.io/scispacy/) before providing it to the BERT model. The data pre-processing code is available [here](https://github.com/RayRuizhiLiao/joint_chestxray/tree/master/joint_img_txt/data_preprocessing). We're releasing the extracted report sections soon! 
 
 ## Regex and expert labeling
 
