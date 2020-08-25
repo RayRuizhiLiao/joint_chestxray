@@ -43,6 +43,7 @@ python ${repo_path}/scripts/main.py
 --training_folds 1 2 3 4 5
 --training_mode 'supervised'
 ```
+Note that in our [data split](https://github.com/RayRuizhiLiao/joint_chestxray/blob/master/example_data/data_split.csv), fold 6 is the unlabeled image-text pairs. 
 
 ## Testing
 
