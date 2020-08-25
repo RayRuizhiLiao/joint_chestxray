@@ -119,7 +119,7 @@ def main():
         data_split_file_postfix = '-allCXR'
 
 
-    if not use_data_split_path:
+    if not args.use_data_split_path:
         if args.data_split_mode == 'testing' and args.do_eval:
             args.data_split_path = os.path.join(args.data_split_path, 
                                                 'mimic-cxr-sub-img-edema-split-manualtest.csv')
