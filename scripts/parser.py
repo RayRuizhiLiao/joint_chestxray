@@ -15,7 +15,7 @@ parser.add_argument('--text_data_dir', # this will need to be changed in the cod
         help='the input data directory; should contain the .tsv files (or other data files) for the task')
 parser.add_argument('--img_data_dir', 
         #default = '/data/vision/polina/projects/chestxray/data_v2/npy/',
-        default = '/data/vision/polina/scratch/ruizhi/chestxray/data/',
+        default = '/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit',
         help='the input data directory; should contain the .tsv files (or other data files) for the task')
 parser.add_argument('--img_localdisk_data_dir', 
         default = '/var/tmp/geeticka',
@@ -115,14 +115,6 @@ parser.add_argument('--print_predictions', default=False, action='store_true',
         help='whether to print predictions of each evaluation data point for image model evaluation')
 parser.add_argument('--print_embeddings', default=False, action='store_true',
         help='whether to print embeddings of each evaluation data point')
-parser.add_argument('--cache_images', default=False, action='store_true', # store a default val of false
-        help='whether to read all the images when instantiating the dataset')
-parser.add_argument('--use_png', default=False, action='store_true', # store a default val of false
-        help='whether to read png images, otherwise read npy files')
-parser.add_argument('--copy_data_to_local', default=False, action='store_true', # store a default val of false
-        help='whether to copy images to local disk (/var/tmp/cxr_data/)')
-parser.add_argument('--copy_zip_to_local', default=False, action='store_true', # store a default val of false
-        help='whether to copy zip to local disk (/var/tmp/zip_cxr_data/) and extract')
 parser.add_argument('--num_cpu_workers', default=8, 
         help='number of cpu cores being used')
 #parser.add_argument('--development_or_test', default='development', required=True,

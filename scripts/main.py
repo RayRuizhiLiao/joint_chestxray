@@ -98,14 +98,6 @@ def main():
     if not args.do_train and not args.do_eval:
         raise Exception('Either do_train or do_eval flag must be set as true')
 
-    # TODO: revisit the code related to copying data in the local disk 
-    # or caching it (may want to delete it)
-    if args.copy_data_to_local and args.copy_zip_to_local:
-        raise Exception('Cannot copy all files and zip to local at the same time')
-
-    if args.cache_images and (args.copy_data_to_local or args.copy_zip_to_local):
-        raise Exception('Cannot cache images and copy images to local at the same time')
-
     '''
     Select the right data split file based on the argument setting
     '''
@@ -199,10 +191,6 @@ def main():
     print('Training mode: {}'.format(args.training_mode))
     print('Doing training: {}'.format(args.do_train))
     print('Doing eval: {}'.format(args.do_eval))
-    print('Caching the images to RAM: {}'.format(args.cache_images))
-    print('Copying the images to local disk (/var/tmp/cxr_data/): {}'.format(args.copy_data_to_local))
-    print('Copying the zip to local disk (/var/tmp/zip_cxr_data/): {}'.format(args.copy_zip_to_local))
-    print('Using png images: {}'.format(args.use_png))
     print('Cuda is available: {}'.format(torch.cuda.is_available()))
     print('Device used: ', device)
     print('Scheduler used: ', args.scheduler)
@@ -345,14 +333,6 @@ def main():
 
     print("\n\nTotal time to run:", round((end_time-start_time)/3600.0, 2))
 
-    if args.copy_data_to_local:
-        local_images = LocalDiskData('', args.use_png, '', args.img_localdisk_data_dir,
-                args.id) # this is fine i just want to delete folder
-        local_images.delete_folder()
-    if args.copy_zip_to_local:
-        local_images = LocalDiskZipData('', args.use_png, args.img_localdisk_data_dir, 
-                args.id)
-        local_images.delete_zip_folder()
 
 
 if __name__ == '__main__':
