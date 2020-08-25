@@ -17,16 +17,16 @@ Set up the conda environment using [`conda_environment.yml`](https://github.com/
 Train the model in an unsupervised fashion, i.e., only the first term in [Eq (3)](https://arxiv.org/pdf/2008.09884.pdf) is optimized:
 
 ```
-python ${repo_path}/scripts/main.py <br />
---img_data_dir ${repo_path}/example_data/images/ <br />
---text_data_dir ${repo_path}/example_data/text/ <br />
---data_split_path ${repo_path}/example_data/data_split.csv <br />
---use_text_data_dir <br />
---use_data_split_path <br />
---output_dir=${output_path} <br />
---do_train <br />
---training_folds 1 2 3 4 5 6 <br />
---training_mode 'semisupervised_phase1' <br />
+python ${repo_path}/scripts/main.py
+--img_data_dir ${repo_path}/example_data/images/
+--text_data_dir ${repo_path}/example_data/text/
+--data_split_path ${repo_path}/example_data/data_split.csv
+--use_text_data_dir
+--use_data_split_path
+--output_dir=${output_path}
+--do_train
+--training_folds 1 2 3 4 5 6
+--training_mode 'semisupervised_phase1'
 ```
 
 ## Testing
