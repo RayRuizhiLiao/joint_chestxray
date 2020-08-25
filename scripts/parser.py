@@ -42,7 +42,7 @@ parser.add_argument('--joint_semisupervised_pretrained_checkpoint',
 parser.add_argument('--max_seq_length',
         default=320, type=int, help='maximum sequence length for bert')
 parser.add_argument('--train_batch_size',
-        default=8, type=int, help='train batch size')
+        default=4, type=int, help='train batch size')
 parser.add_argument('--eval_batch_size',
         default=8, type=int, help='eval batch size')
 parser.add_argument('--learning_rate',
@@ -74,9 +74,9 @@ parser.add_argument('--scheduler', default='WarmupLinearSchedule', type=str,
 #logging info, not hyperparams
 parser.add_argument('--output_channel_encoding', default='multiclass', 
         help='whether to use multi-label (3 channel) vs multi-class (one hot) based classification')
-parser.add_argument('--id', default='dummy',
+parser.add_argument('--id', default='example',
         help='id to use for the outputs directory')
-parser.add_argument('--data_split_mode', default='cross_val',
+parser.add_argument('--data_split_mode', default='testing',
         help='whether to run in cross val or testing mode')
 parser.add_argument('--use_text_data_dir', default=False, action='store_true',
         help='whether to use the given text data dir path; otherwise concatenate it with other tags')
@@ -92,7 +92,7 @@ parser.add_argument('--training_mode', default='supervised',
         help='whether to perform the supervised or semisupervised training,' \
              'you can specify one of the three options: supervised, semisupervised_phase1, semisupervised_phase2.' \
              'If semisupervised_phase2, the joint model will load from pretrained_model_checkpoint before training.')
-parser.add_argument('--semisupervised_training_data', default='allCHF',
+parser.add_argument('--semisupervised_training_data', default='allCXR',
         help='whether to use allCXR or allCHF for semisupervised training.')
 parser.add_argument('--bert_pool_last_hidden', default=False, action='store_true',
         help='whether to pool the full sequence of the last layer hidden states in bert model')
@@ -121,7 +121,7 @@ parser.add_argument('--num_cpu_workers', default=8,
 #        help='whether to use development or test data')
 parser.add_argument('--logging_steps', default=50, type=int, 
         help='the number of steps for logging')
-parser.add_argument('--save_epochs', default=5, type=int, 
+parser.add_argument('--save_epochs', default=1, type=int, 
         help='at which epochs to save the model checkpoints')
 #parser.add_argument('--evaluate_during_training', default=False, action='store_true', 
 #        help='whether to evaluate the model during training')
