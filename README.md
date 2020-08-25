@@ -57,7 +57,7 @@ We have demonstrated the application of this algorithm in pulmonary edema assess
 
 ## Radiology report pre-processing
 
-We extract the *impressions*, *findings*, *conclusion* and *recommendation* sections from the radiology reports. If none of these sections are present in the report, we use the *final report* section.
+We extract the *Impressions*, *Findings*, *Conclusion* and *Recommendation* sections from the radiology reports. If none of these sections are present in the report, we use the *Final Report* section.
 
 ## Regex and expert labeling
 
