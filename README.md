@@ -3,7 +3,7 @@
 Joint learning of chest radiographs and radiology reports in the application of pulmonary edema assessment.
 
 This repository incorporates the algorithms presented in <br />
-G. Chauhan<sup>\*</sup>, R. Liao<sup>\*</sup> et al. Joint Modeling of Chest Radiographs and Radiology Reports for Pulmonary Edema Assessment. *International Conference on Medical Image Computing and Computer-Assisted Intervention*, 2020. <br />
+G. Chauhan<sup>\*</sup>, R. Liao<sup>\*</sup> et al. [Joint Modeling of Chest Radiographs and Radiology Reports for Pulmonary Edema Assessment.]((https://arxiv.org/pdf/2008.09884.pdf)) *International Conference on Medical Image Computing and Computer-Assisted Intervention*, 2020. <br />
 (<sup>\*</sup> indicates equal contributions)
 
 # Instructions
@@ -13,6 +13,10 @@ G. Chauhan<sup>\*</sup>, R. Liao<sup>\*</sup> et al. Joint Modeling of Chest Rad
 Set up the conda environment using [`conda_environment.yml`](https://github.com/RayRuizhiLiao/joint_chestxray/blob/master/conda_environment.yml). You might want to remove the pip dependencies if that is creating an issue for you. You can manually install the spacy and scispacy dependencies using `pip install spacy` and `pip install scispacy`. Read [`https://allenai.github.io/scispacy/`](https://allenai.github.io/scispacy/) for more information on scispacy. 
      
 ## Training
+
+Train the model in an unsupervised fashion, i.e., only the first term in [Eq (3)](https://arxiv.org/pdf/2008.09884.pdf) is optimized:
+
+''
 
 ## Testing
 
