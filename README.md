@@ -55,6 +55,10 @@ We have experimented this algorithm on [MIMIC-CXR](https://physionet.org/content
 
 We have demonstrated the application of this algorithm in pulmonary edema assessment. We aim to classify a given chest x-ray image into one of the four ordinal levels: no edema (0), vascular congestion (1), interstitial edema (2), and alveolar edema (3).
 
+## Radiology report pre-processing
+
+We extract the *impressions*, *findings*, *conclusion* and *recommendation* sections from the radiology reports. If none of these sections are present in the report, we use the *final report* section.
+
 ## Regex and expert labeling
 
 We use [regex](https://github.com/RayRuizhiLiao/regex_pulmonary_edema) to extract pulmonary edema severity labels from the radiology reports for our model training. A board-certified radiologist and two domain experts reviewed and labeled 485 radiology reports (corrsponsding to 531 chest radiographs). We use the expert labels for our model testing. The regex labeling results and expert labels on MIMIC-CXR are summerized [here](https://github.com/RayRuizhiLiao/joint_chestxray/blob/master/metadata/mimic-cxr-sub-img-edema-split-manualtest.csv).
