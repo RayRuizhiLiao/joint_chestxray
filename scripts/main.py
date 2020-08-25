@@ -118,12 +118,13 @@ def main():
     elif args.semisupervised_training_data == 'allCXR':
         data_split_file_postfix = '-allCXR'
 
+
     if args.data_split_mode == 'testing' and args.do_eval:
         args.data_split_path = os.path.join(args.data_split_path, 
                                             'mimic-cxr-sub-img-edema-split-manualtest.csv')
         # When evaluating in the testing mode, you should use the expert labels 
         # that are included in the test set 
-    else:
+    elif args.data_split_mode != 'use_path':
         args.data_split_path = os.path.join(
             args.data_split_path,
             'mimic-cxr-sub-img-edema-split{}.csv'.format(data_split_file_postfix))
