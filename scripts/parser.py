@@ -78,6 +78,8 @@ parser.add_argument('--id', default='dummy',
         help='id to use for the outputs directory')
 parser.add_argument('--data_split_mode', default='cross_val',
         help='whether to run in cross val or testing mode')
+parser.add_argument('--use_text_data_dir', default=False, action='store_true',
+        help='whether to use the given text data dir path; otherwise concatenate it with other tags')
 parser.add_argument('--use_data_split_path', default=False, action='store_true',
         help='whether to use the given data split path; otherwise concatenate it with other tags')
 parser.add_argument('--compute_auc', default=True,

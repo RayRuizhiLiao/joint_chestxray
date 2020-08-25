@@ -141,16 +141,20 @@ def main():
     args.model = 'model'
     # TODO: consider deleting this
 
+    if not args.use_text_data_dir:
+        if args.training_mode == 'supervised' or args.training_mode == 'supervised_masking':
+            args.text_data_dir = os.path.join(args.text_data_dir, 'supervised', 'full')
+        elif 'semisupervised' in args.training_mode:
+            args.text_data_dir = os.path.join(args.text_data_dir, 'semisupervised',
+                                              args.semisupervised_training_data, 'full')
+
     if args.training_mode == 'supervised' or args.training_mode == 'supervised_masking':
-        args.text_data_dir = os.path.join(args.text_data_dir, 'supervised', 'full')
         args.output_dir = os.path.join(args.output_dir, args.data_split_mode,
                                        args.model, args.training_mode, args.id)
     elif 'semisupervised' in args.training_mode:
-        args.text_data_dir = os.path.join(args.text_data_dir, 'semisupervised',
-                                          args.semisupervised_training_data, 'full')
         args.output_dir = os.path.join(args.output_dir, args.data_split_mode, args.model, 
                                        args.training_mode, args.semisupervised_training_data, 
-                                       args.id) 
+                                       args.id)
 
     args.reports_dir = os.path.join(args.output_dir, 'eval_reports')
     args.tsbd_dir = os.path.join(args.output_dir, 'tsbd_dir')
