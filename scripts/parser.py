@@ -15,7 +15,7 @@ parser.add_argument('--text_data_dir', # this will need to be changed in the cod
         help='the input data directory; should contain the .tsv files (or other data files) for the task')
 parser.add_argument('--img_data_dir', 
         #default = '/data/vision/polina/projects/chestxray/data_v2/npy/',
-        default = '/data/vision/polina/scratch/ruizhi/chestxray/data/',
+        default = '/data/vision/polina/scratch/ruizhi/chestxray/data/png_16bit',
         help='the input data directory; should contain the .tsv files (or other data files) for the task')
 parser.add_argument('--img_localdisk_data_dir', 
         default = '/var/tmp/geeticka',
@@ -42,7 +42,7 @@ parser.add_argument('--joint_semisupervised_pretrained_checkpoint',
 parser.add_argument('--max_seq_length',
         default=320, type=int, help='maximum sequence length for bert')
 parser.add_argument('--train_batch_size',
-        default=8, type=int, help='train batch size')
+        default=4, type=int, help='train batch size')
 parser.add_argument('--eval_batch_size',
         default=8, type=int, help='eval batch size')
 parser.add_argument('--learning_rate',
@@ -74,10 +74,14 @@ parser.add_argument('--scheduler', default='WarmupLinearSchedule', type=str,
 #logging info, not hyperparams
 parser.add_argument('--output_channel_encoding', default='multiclass', 
         help='whether to use multi-label (3 channel) vs multi-class (one hot) based classification')
-parser.add_argument('--id', default='dummy',
+parser.add_argument('--id', default='example',
         help='id to use for the outputs directory')
-parser.add_argument('--data_split_mode', default='cross_val',
+parser.add_argument('--data_split_mode', default='testing',
         help='whether to run in cross val or testing mode')
+parser.add_argument('--use_text_data_dir', default=False, action='store_true',
+        help='whether to use the given text data dir path; otherwise concatenate it with other tags')
+parser.add_argument('--use_data_split_path', default=False, action='store_true',
+        help='whether to use the given data split path; otherwise concatenate it with other tags')
 parser.add_argument('--compute_auc', default=True,
         help='whether to compute auc for evaluation')
 parser.add_argument('--compute_mse', default=True,
@@ -88,7 +92,7 @@ parser.add_argument('--training_mode', default='supervised',
         help='whether to perform the supervised or semisupervised training,' \
              'you can specify one of the three options: supervised, semisupervised_phase1, semisupervised_phase2.' \
              'If semisupervised_phase2, the joint model will load from pretrained_model_checkpoint before training.')
-parser.add_argument('--semisupervised_training_data', default='allCHF',
+parser.add_argument('--semisupervised_training_data', default='allCXR',
         help='whether to use allCXR or allCHF for semisupervised training.')
 parser.add_argument('--bert_pool_last_hidden', default=False, action='store_true',
         help='whether to pool the full sequence of the last layer hidden states in bert model')
@@ -111,21 +115,13 @@ parser.add_argument('--print_predictions', default=False, action='store_true',
         help='whether to print predictions of each evaluation data point for image model evaluation')
 parser.add_argument('--print_embeddings', default=False, action='store_true',
         help='whether to print embeddings of each evaluation data point')
-parser.add_argument('--cache_images', default=False, action='store_true', # store a default val of false
-        help='whether to read all the images when instantiating the dataset')
-parser.add_argument('--use_png', default=False, action='store_true', # store a default val of false
-        help='whether to read png images, otherwise read npy files')
-parser.add_argument('--copy_data_to_local', default=False, action='store_true', # store a default val of false
-        help='whether to copy images to local disk (/var/tmp/cxr_data/)')
-parser.add_argument('--copy_zip_to_local', default=False, action='store_true', # store a default val of false
-        help='whether to copy zip to local disk (/var/tmp/zip_cxr_data/) and extract')
 parser.add_argument('--num_cpu_workers', default=8, 
         help='number of cpu cores being used')
 #parser.add_argument('--development_or_test', default='development', required=True,
 #        help='whether to use development or test data')
 parser.add_argument('--logging_steps', default=50, type=int, 
         help='the number of steps for logging')
-parser.add_argument('--save_epochs', default=5, type=int, 
+parser.add_argument('--save_epochs', default=1, type=int, 
         help='at which epochs to save the model checkpoints')
 #parser.add_argument('--evaluate_during_training', default=False, action='store_true', 
 #        help='whether to evaluate the model during training')

@@ -95,14 +95,9 @@ def load_and_cache_examples(args, tokenizer):
     print("Length of all image text ids", len(all_img_txt_ids))
 
     '''
-    Specify the image set directory and 
-    pre-processing method depending on it's for training/evaluation
+    Specify the image pre-processing method 
+    depending on it's for training/evaluation
     '''
-    if args.use_png:
-        img_data_dir = os.path.join(args.img_data_dir, 'png_16bit')
-    else:
-        img_data_dir = os.path.join(args.img_data_dir, 'npy')
-
     if args.do_train:
         xray_transform = RandomTranslateCrop(2048)
     if args.do_eval:
@@ -113,12 +108,8 @@ def load_and_cache_examples(args, tokenizer):
     '''
     dataset = CXRImageTextDataset(args.img_localdisk_data_dir, args.id, 
                                   all_txt_tokens, all_txt_masks, all_txt_segments, 
-                                  all_txt_labels, all_img_txt_ids, img_data_dir, 
+                                  all_txt_labels, all_img_txt_ids, args.img_data_dir, 
                                   all_img_labels, transform=xray_transform, 
-                                  cache_images=args.cache_images,
-                                  use_png=args.use_png,
-                                  copy_data_to_local=args.copy_data_to_local,
-                                  copy_zip_to_local = args.copy_zip_to_local,
                                   output_channel_encoding = args.output_channel_encoding)
     print("Length of the dataset is ", len(dataset))
 
@@ -484,8 +475,7 @@ class CXRImageTextDataset(Dataset):
     def __init__(self, img_localdisk_data_dir, model_id , all_txt_tokens, 
                  all_txt_masks, all_txt_segments, all_txt_labels,
                  all_img_txt_ids, img_dir, all_img_labels, transform=None, 
-                 cache_images=False, use_png=False, copy_data_to_local=False, 
-                 copy_zip_to_local=False, output_channel_encoding='multilabel'):
+                 output_channel_encoding='multilabel'):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
@@ -501,21 +491,8 @@ class CXRImageTextDataset(Dataset):
         self.all_img_labels = all_img_labels
         self.img_dir = img_dir
         self.transform = transform
-        self.cache_images = cache_images
         self.output_channel_encoding = output_channel_encoding
-        if use_png:
-            self.img_format = '.png'
-        else:
-            self.img_format = '.npy'
-        if cache_images:
-            self.image_cache = ImageCache(img_dir, self.img_format)
-        if copy_data_to_local:
-            local_images = LocalDiskData(img_dir, use_png, all_img_txt_ids, img_localdisk_data_dir, model_id)
-            self.img_dir = local_images.copy_to_local()
-        if copy_zip_to_local:
-            local_images = LocalDiskZipData(img_dir, use_png, img_localdisk_data_dir, model_id)
-            self.img_dir = local_images.copy_to_local()
-            local_images.extract_zip()
+        self.img_format = '.png'
 
         print('Image directory: ', self.img_dir)
 
@@ -528,11 +505,9 @@ class CXRImageTextDataset(Dataset):
 
         img_id = list(self.all_img_txt_ids.keys())[idx]
 
-        if self.cache_images:
-            image = self.image_cache.get_item(img_id)
-        else:
-            img_path = os.path.join(self.img_dir, img_id+self.img_format)
-            image = load_image(img_path)
+
+        img_path = os.path.join(self.img_dir, img_id+self.img_format)
+        image = load_image(img_path)
         if self.transform:
             image = self.transform(image)
         image = image.reshape(1, image.shape[0], image.shape[1])
@@ -569,150 +544,3 @@ def load_image(img_path):
     return image
 
 
-# Below is a customizing data class that manages chest xray images on local disk
-class LocalDiskData:
-
-    def __init__(self, img_dir, use_png, img_ids, img_localdisk_data_dir, model_id):
-        self.img_dir = img_dir
-        self.use_png = use_png
-        self.img_ids = img_ids
-        self.local_dir = os.path.join(img_localdisk_data_dir, 'cxr_data', model_id)
-        if use_png:
-            self.local_img_dir = os.path.join(self.local_dir, 'png_16bit')
-        else:
-            self.local_img_dir = os.path.join(self.local_dir, 'npy')
-        if not os.path.exists(self.local_img_dir):
-            os.makedirs(self.local_img_dir)
-
-    def copy_to_local(self):
-        start_time = time.time()
-        c = 0
-        for img_id in self.img_ids:
-            if self.use_png:
-                src_path = os.path.join(self.img_dir, img_id+'.png')
-                dst_path = os.path.join(self.local_img_dir, img_id+'.png')
-            else:
-                src_path = os.path.join(self.img_dir, img_id+'.npy')
-                dst_path = os.path.join(self.local_img_dir, img_id+'.npy')                
-            copyfile(src_path, dst_path)
-            c += 1
-        end_time = time.time()
-        interval_time = end_time-start_time
-        print('It took ', interval_time, ' seconds to copy ', str(c), ' images to local disk ', self.local_img_dir)
-
-        return self.local_img_dir
-
-    # TODO: implement def delete_local_data(self) - once that is implemented, change local dir based on model
-    # id
-    def delete_folder(self):
-        if os.path.exists(self.local_img_dir):
-            shutil.rmtree(self.local_img_dir)
-            print('Removed the png directory %s'%(self.local_img_dir))
-
-
-# Below is a data class that manages zipped chest xray images on local disk
-# and unzips when copy is complete
-class LocalDiskZipData:
-    #TODO geeticka make sure to copy over permissions of files too using copy and chmod -R 777 folder
-    def __init__(self, img_dir, use_png, img_localdisk_data_dir, model_id):
-        self.img_dir = img_dir
-        self.use_png = use_png
-        self.local_dir = os.path.join(img_localdisk_data_dir, 'zip_cxr_data', model_id)
-        self.zip_filename = None
-        if use_png:
-            self.local_img_dir = os.path.join(self.local_dir, 'png_16bit')
-        else:
-            self.local_img_dir = os.path.join(self.local_dir, 'npy')
-        if not os.path.exists(self.local_img_dir):
-            os.makedirs(self.local_img_dir)
-
-    def copy_to_local(self):
-        start_time = time.time()
-        if self.use_png:
-            self.zip_filename = 'labeled_images_png.zip'
-            src_path = '/data/vision/polina/scratch/ruizhi/chestxray/zip-data/' + self.zip_filename
-        else:
-            self.zip_filename = 'labeled_images_npy.zip'
-            src_path = '/data/vision/polina/scratch/ruizhi/chestxray/zip-data/' + self.zip_filename
-        dst_path = os.path.join(self.local_img_dir, self.zip_filename)
-        #if os.path.exists(dst_path): #TODO: some bug fix needed, cause some jobs might be writing and not done
-        #    print('Zip file already exists in local disk destination %s'%(dst_path))
-        #    return self.local_img_dir
-        copyfile(src_path, dst_path)
-        end_time = time.time()
-        interval_time = end_time-start_time
-        print('It took ', interval_time, ' seconds to copy zipped images to local disk ', self.local_img_dir)
-
-        return self.local_img_dir
-
-    def extract_zip(self):
-        if self.zip_filename == None:
-            raise Exception('You should copy over the zip data to local disk before trying to extract it')
-        if os.path.exists(os.path.join(self.local_img_dir, 'zip_extraction_confirm.txt')):
-            print('Images have already been extracted to the local disk destination %s'%(self.local_img_dir))
-            return
-        start_time = time.time()
-        with ZipFile(os.path.join(self.local_img_dir, self.zip_filename), 'r') as zipf:
-            zipf.extractall(path=self.local_img_dir)
-        end_time = time.time()
-        # a solution to mutex issue is for the job to wait here until it sees the txt confirmation file
-        # only then does it proceed
-        #with open(os.path.join(self.local_img_dir, 'zip_extraction_confirm.txt'), 'w') as f:
-        #    f.write('Simply a confirmation file written once all extraction done')
-        interval_time = end_time-start_time
-        print('It took ', interval_time, ' seconds to extract the zipped files in local disk ',
-                self.local_img_dir)
-
-    def delete_zip(self):
-        zip_file = os.path.join(self.local_img_dir, self.zip_filename)
-        if os.path.exists(zip_file):
-            os.remove(zip_file) # remove this when done extracting zip - time this to make sure not slow
-            print('Zip file %s removed'%(self.zip_filename)) 
-
-    def delete_zip_folder(self):
-        if os.path.exists(self.local_img_dir):
-            shutil.rmtree(self.local_img_dir)
-            print('Removed the png directory %s'%(self.local_img_dir))
-    # TODO: implement def delete_local_data(self) - once that is implemented, change tmp dir based on model id
-
-# Below is a customizing dataset class for chest xray images and radiology reports
-# Referred to https://github.com/AnimatedRNG/pytorch-LapSRN/blob/feature_dataset/sr_dataset.py
-class ImageCache:
-
-    def __init__(self, img_dir, img_format, max_cache_size=3e+10):
-        self.image_cache = {}
-        self.img_dir = img_dir
-        self.img_format = img_format
-        self.cache_size = 0
-        self.max_cache_size = max_cache_size
-        self.insertion_order = []
-
-    def __calc_size__(self, image):
-        """
-        Compute an image size to
-        approxite the image cache size
-        """
-        # eg_key = list(self.image_cache.keys())[0]
-        # item_size = sys.getsizeof(self.image_cache[eg_key])
-        # return len(list(self.image_cache.keys())) * item_size
-        return sys.getsizeof(image)
-
-    def get_item(self, key):
-        if key in self.insertion_order:
-            return self.image_cache[key]
-
-        img_id = key
-        img_path = os.path.join(self.img_dir, img_id+self.img_format)
-        image = load_image(img_path)
-
-        self.image_cache[img_id] = image
-        self.insertion_order.append(img_id)
-        self.cache_size += self.__calc_size__(image)
-
-        if self.cache_size > self.max_cache_size:
-            remove_key = self.insertion_order.pop(0)
-            remove_size = self.__calc_size__(self.image_cache[remove_key])
-            del self.image_cache[remove_key]
-            self.cache_size -= max(remove_size, 0)
-
-        return image
