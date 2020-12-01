@@ -198,7 +198,6 @@ class TextBertForSequenceClassification(BertPreTrainedModel):
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, self.config.num_labels)
-        self.pooler = TextBertAttentionPooler(config)
 
         self.apply(self.init_weights)
 
@@ -212,20 +211,7 @@ class TextBertForSequenceClassification(BertPreTrainedModel):
         # print('CLS output', outputs[1])
         # print('CLS input', outputs[0][:,0])
         # print('Hidden states', outputs[0])
-        if not use_all_sequence:
-            pooled_output = outputs[1] # this is the default pooled output i.e. [CLS]
-        else:
-            # insert own pooling mechanism
-            hidden_states = outputs[0] # now we have the whole BERT sequence to use i.e. max_seq_len
-            # don't use the [CLS] and [SEP]
-            # need to implement something called attention pooling over here
-            pooled_output = self.pooler(input_ids, hidden_states, attention_mask, img_embedding,
-                    output_img_txt_attn)
-            if output_img_txt_attn:
-                img_txt_attn = pooled_output[1]
-                pooled_output = pooled_output[0]
-            else:
-                pooled_output = pooled_output[0]
+        pooled_output = outputs[1] # this is the default pooled output i.e. [CLS]
 
         pooled_output = self.dropout(pooled_output)
         
@@ -248,113 +234,6 @@ class TextBertForSequenceClassification(BertPreTrainedModel):
             param.requires_grad = True
 
 
-# Bert Attention pooler based on simple pooler in hugging face repo
-# ref:
-# https://github.com/huggingface/transformers/blob/b33a385091de604afb566155ec03329b84c96926/pytorch_transformers/modeling_bert.py#L455
-class TextBertAttentionPooler(nn.Module):
-    def __init__(self, config):
-        super(TextBertAttentionPooler, self).__init__()
-        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        self.activation = nn.Tanh()
-        self.attention_head_size = int(config.hidden_size) # we only have 1 attention head
-
-    def forward(self, input_ids, hidden_states, attention_mask, img_embedding=None, output_img_txt_attn=False):
-        if attention_mask is None:
-            attention_mask = torch.ones_like(input_ids)
-        # https://github.com/huggingface/transformers/blob/v1.0.0/pytorch_transformers/modeling_bert.py L 688
-        # since attention_mask is 1.0 for positions we want to attend and 0.0 for masked positions, this 
-        # operation will create a tensor which is 0.0 for positions we want to attend and -10000.0 for masked
-        # positions. Since we are adding it to the raw scores before the softmax, this is effectively the same
-        # as removing these entirely. 
-        compatible_attention_mask = attention_mask.to(dtype=next(self.parameters()).dtype) # fp16 compatibility
-        compatible_attention_mask = (1.0 - compatible_attention_mask) * -10000.0
-
-        # need to compute the attention scores somehow. In the simplest case, randomly initialize them and 
-        # connect them by doing that weighted sum with the hidden states to compute the pooled representation
-        # for the radiology report. Need to look at good ways to do attention weighted pooling when we 
-        # have multiple sentences - something hierarchical would be interesting. Interesting after idea
-        # how about including position like encoding to highlight when we are in a new sentence vs not 
-        # can be as simple as 0 or 1 segment embeddings the way bert does :D :D 
-        #attention_scores = torch.empty(attention_mask.size,
-        #        requires_grad=True).type(next(self.parameters()).dtype)
-        #nn.init.ones_(attention_scores) # give equal attention score to all the tokens
-        if img_embedding is None:
-            attention_scores = torch.ones_like(compatible_attention_mask, requires_grad=True)
-            hidden_states_used = hidden_states
-        elif len(img_embedding.size()) == 2:
-            # compute the dot product similarity
-            # attention_scores = torch.matmul(img_embedding, hidden_states.transpose(-1, -2))
-            # Above wouldn't work, gives the output as a 3D tensor but we need a 2D tensor with unsqueezed 
-            img_embed_expanded = img_embedding.unsqueeze(-2) # from [batch,768] -> [batch, 1, 768]
-            # compute the dot product
-            print(hidden_states) # the hidden states look exactly the same
-            print('Size of hidden states', hidden_states.size())
-            attention_scores_expanded = torch.matmul(img_embed_expanded, hidden_states.transpose(-1,-2))
-            attention_scores = attention_scores_expanded.squeeze()
-            # from [batch, 1, token_sequences] -> [batch, token_sequences]
-            # might need to look at
-            # https://github.com/huggingface/transformers/blob/v1.0.0/pytorch_transformers/modeling_bert.py
-            # L 308 to look at the detail for the attention score reweighting
-            hidden_states_used = hidden_states
-        else: 
-            # in this case we have img_embedding size as a 3D vector (not including batch), need to manipulate
-            '''
-            if the img_embedding is 3 dimensional then we compute the similarity based on image regions
-            '''
-            # let us first convert an img_embed from batch, channels, H, W to batch, images, channels
-            # basically from 8, 192, 8, 8 to 8, 16, 768
-            for x in range(0, img_embedding.size()[2], 2):
-                for y in range(0, img_embedding.size()[2], 2):
-                    flattened = torch.flatten(img_embedding[: , : , x:x+2 , y:y+2], 1)
-                    flattened = flattened.unsqueeze(1)
-                    if x == 0 and y == 0:
-                        img_embed_expanded = flattened
-                    else:
-                        img_embed_expanded = torch.cat((img_embed_expanded, flattened), 1)
-            print(img_embedding)
-            print(img_embed_expanded)
-            attention_scores = torch.matmul(img_embed_expanded, hidden_states.transpose(-1,-2))
-            compatible_attention_mask = \
-                    compatible_attention_mask.unsqueeze(-2).expand(attention_scores.size())
-            hidden_states_used = hidden_states.unsqueeze(-3).expand(attention_scores.size()+\
-                    (hidden_states.size()[-1],)) 
-            # expand from batch, token_seq_len, 768 ---> batch, img_regions, token_seq_len, 768
-
-
-        print('Before scaling', attention_scores)
-        attention_scores = attention_scores / math.sqrt(self.attention_head_size)
-        print('After scaling', attention_scores)
-        attention_scores = attention_scores + compatible_attention_mask # batch_size X max_seq_len
-        print('After adding mask', attention_scores)
-        print('Attention scores size', attention_scores.size())
-        
-        # Normalize the attention scores to probabilities 
-        attention_probs = nn.Softmax(dim=-1)(attention_scores) # take softmax along token sequences dim
-        print('Attention probs size', attention_probs.size())
-        print('Attention_probs', attention_probs)
-        # idk why it just became the same probability; that's a major bug
-        # The transformer paper also drops out attention probabilities but we are not going to do that
-
-        # Take the dot product between attention probs and hidden states to get the pooled output 
-        '''
-        if attention_probs = [[1,2,3],[4,5,6]] shape is 2,3
-        hidden = [[[1,2],[1,2],[1,2]],[[1,2],[1,2],[1,2]]] shape is 2,3,2
-        then we expand attention_probs to be [[[1,1],[2,2],[3,3]],[[4,4],[5,5],[6,6]]] so that we 
-        can do element wise product with hidden (shape 2,3,2) and then sum along the middle axis 
-        to get something of the shape 2x2. Middle axis represents our token dimensions which we 
-        want to collapse
-        '''
-
-        attention_probs_expanded = attention_probs.unsqueeze(-1).expand(hidden_states_used.size())
-        pooled_output = torch.sum(attention_probs_expanded * hidden_states_used, -2) # collapse token_seq_len
-        if img_embedding is not None and len(img_embedding.size()) > 2:
-            #pooled_output = torch.mean(pooled_output, -2) # could do a max over this dimension alternatively
-            pooled_output = torch.max(pooled_output, -2).values # torch.max returns values and indices
-        pooled_output = self.dense(pooled_output)
-        pooled_output = self.activation(pooled_output)
-        if output_img_txt_attn:
-            return (pooled_output, attention_probs)
-        return (pooled_output,)
 
 
 class ImageTextModel(nn.Module):
