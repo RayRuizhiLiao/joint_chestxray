@@ -220,10 +220,7 @@ class TextBertForSequenceClassification(BertPreTrainedModel):
         # else:
         logits = self.classifier(pooled_output)
         outputs = (pooled_output, logits,) + outputs[2:]
-        # add hidden states and attention if they are here
-        if use_all_sequence and output_img_txt_attn:
-            outputs = outputs + (img_txt_attn,)
-        return outputs  # pooled_output, (logits), (hidden_states), (txt_attentions), (img_txt_attn)
+        return outputs  # pooled_output, (logits), (hidden_states), (txt_attentions)
 
     def freeze_bert_encoder(self):
         for param in self.bert.parameters():
