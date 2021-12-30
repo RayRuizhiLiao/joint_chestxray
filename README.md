@@ -11,6 +11,10 @@ G. Chauhan<sup>\*</sup>, R. Liao<sup>\*</sup> et al. [Joint Modeling of Chest Ra
 ## Setup
 
 Set up the conda environment using [`conda_environment.yml`](https://github.com/RayRuizhiLiao/joint_chestxray/blob/master/conda_environment.yml). You might want to remove the pip dependencies if that is creating an issue for you. You can manually install the spacy and scispacy dependencies using `pip install spacy` and `pip install scispacy`. Read [`https://allenai.github.io/scispacy/`](https://allenai.github.io/scispacy/) for more information on scispacy. 
+
+## BERT
+
+Download the pre-trained BERT model, tokenizer, etc. from [`Dropbox`](https://www.dropbox.com/sh/hl00bp2rtrykbvy/AACiMaEzKS95hpwv9WvaMTg6a?dl=0). You should download the folder *scibert_scivocab_uncased* that contains five files. The path to *scibert_scivocab_uncased* should be passed to [`--bert_pretrained_dir`](https://github.com/RayRuizhiLiao/joint_chestxray/blob/42d5c8bb10adc9edbbb696b0d27b6b735403b339/scripts/parser.py#L23).
      
 ## Training
 
